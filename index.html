@@ -2610,7 +2610,7 @@ function drawMinimap() {
       ctx.fillStyle = r.cleared ? 'rgba(126,224,138,0.9)' : 'rgba(255,255,255,0.55)';
       ctx.font = 'bold 7px monospace';
       ctx.textAlign = 'left';
-      ctx.fillText(r.isBoss ? '★' : r.id, rx + 1.5, ry + 7.5);
+      ctx.fillText(r.isBoss ? '★' : (r.letter || ''), rx + 1.5, ry + 7.5);
     }
   }
 
