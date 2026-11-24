@@ -1,0 +1,2782 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CBQ · 随机室内清除</title>
+<style>
+:root{
+  --bg:#0a0c10; --panel:rgba(10,13,18,.90); --line:rgba(255,255,255,.13);
+  --txt:#e8edf3; --dim:#8b97a6; --acc:#ffb257; --red:#ff5a4d; --green:#7ee08a;
+  --mono:"JetBrains Mono","Cascadia Mono","Consolas","SFMono-Regular",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
+  font-family:var(--mono);user-select:none;-webkit-user-select:none}
+canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+
+/* ---------------- HUD ---------------- */
+#hud{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .22s}
+#hud.on{opacity:1}
+.hud-tl{position:absolute;left:20px;top:18px;display:flex;flex-direction:column;gap:8px}
+.bar{position:relative;width:238px;height:13px;background:rgba(255,255,255,.08);
+  border:1px solid var(--line);border-radius:2px;overflow:hidden}
+.bar>i{position:absolute;left:0;top:0;bottom:0;width:100%;transition:width .1s linear}
+#hpFill{background:linear-gradient(90deg,#ff4d3d,#ff8a5c)}
+#hpFill.low{animation:pulse .65s infinite alternate}
+@keyframes pulse{from{opacity:.5}to{opacity:1}}
+.row{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--dim);letter-spacing:.04em}
+.row b{color:var(--txt);font-weight:600;font-size:13px}
+.hud-tr{position:absolute;right:20px;top:18px;text-align:right;font-size:11.5px;color:var(--dim);line-height:1.75}
+.hud-tr .room{color:var(--txt);font-size:13px;letter-spacing:.1em}
+.hud-tr .big{font-size:21px;color:var(--acc);font-weight:700;letter-spacing:.05em}
+.hud-tr .big small{font-size:11px;color:var(--dim);letter-spacing:.1em;font-weight:400}
+.hud-bl{position:absolute;left:20px;bottom:16px;font-size:11px;color:#6f7b8a;line-height:1.85;letter-spacing:.02em}
+.hud-bl kbd{display:inline-block;min-width:16px;text-align:center;padding:0 4px;margin-right:2px;
+  border:1px solid var(--line);border-radius:2px;color:#aab6c4;font-size:10px}
+#flash{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .28s;
+  background:radial-gradient(ellipse at center,rgba(255,0,0,0) 30%,rgba(255,20,10,.5) 100%)}
+#toast{position:fixed;left:50%;top:74px;transform:translateX(-50%);font-size:13px;letter-spacing:.12em;
+  color:var(--acc);background:rgba(10,13,18,.82);border:1px solid var(--line);padding:8px 18px;
+  border-radius:3px;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.on{opacity:1}
+
+/* ---------------- 菜单 ---------------- */
+#overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 42%,rgba(16,20,26,.84),rgba(4,5,7,.97));
+  z-index:20}
+#overlay.hide{display:none}
+.card{width:min(580px,92vw);border:1px solid var(--line);background:var(--panel);
+  padding:32px 38px 28px;border-radius:6px;box-shadow:0 18px 80px rgba(0,0,0,.65)}
+.tag{font-size:10.5px;letter-spacing:.34em;color:var(--acc);margin-bottom:12px}
+h1{font-size:40px;letter-spacing:.08em;line-height:1;margin-bottom:8px;font-weight:800}
+h1 span{color:var(--acc);font-size:22px;letter-spacing:.16em;margin-left:10px}
+h2{font-size:27px;letter-spacing:.07em;margin-bottom:10px}
+.sub{color:var(--dim);font-size:12.5px;line-height:1.95;margin-bottom:22px}
+.sub b{color:#cfd8e2;font-weight:600}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:9px 18px;font-size:12px;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:15px 0;margin-bottom:22px}
+.keys .k{color:var(--acc);white-space:nowrap;letter-spacing:.04em}
+.keys .d{color:#b9c4d0}
+.btns{display:flex;gap:11px;flex-wrap:wrap}
+button{font-family:var(--mono);font-size:12.5px;letter-spacing:.08em;padding:11px 20px;cursor:pointer;
+  background:transparent;color:var(--txt);border:1px solid var(--line);border-radius:3px;transition:.15s}
+button:hover{background:rgba(255,255,255,.07);border-color:rgba(255,178,87,.55)}
+button.primary{background:var(--acc);color:#1a1206;border-color:var(--acc);font-weight:700}
+button.primary:hover{background:#ffc47d}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:9px 24px;font-size:12.5px;color:var(--dim);margin-bottom:22px}
+.stats b{color:var(--txt);float:right;font-weight:600}
+.legend{display:flex;gap:18px;font-size:11px;color:var(--dim);margin-bottom:20px;flex-wrap:wrap}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:1px;margin-right:6px;vertical-align:middle}
+.hidden{display:none!important}
+
+/* ---------------- 代号 / 排行榜 ---------------- */
+.nameRow{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:12px;color:var(--dim)}
+.nameRow input{flex:1;min-width:0;background:rgba(255,255,255,.06);border:1px solid var(--line);
+  color:var(--txt);font-family:var(--mono);font-size:13px;padding:8px 10px;border-radius:3px;outline:none;
+  transition:border-color .15s}
+.nameRow input:focus{border-color:rgba(255,178,87,.6)}
+.nameRow input:disabled{opacity:.5}
+.nameRow button{padding:8px 12px;font-size:11.5px}
+#nameHint{white-space:nowrap}
+.titleBest{color:var(--acc);font-size:11.5px;letter-spacing:.06em;margin-bottom:16px}
+.board{display:flex;flex-direction:column;gap:2px;max-height:330px;overflow:auto;margin-bottom:20px;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px 0}
+.boardRow{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;
+  padding:8px 6px;font-size:13px;border-radius:2px}
+.boardRow.me{background:rgba(255,178,87,.10);box-shadow:inset 2px 0 0 var(--acc)}
+.boardRow .rank{color:var(--dim);font-size:11px;text-align:right}
+.boardRow .nm{color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.boardRow .fl{color:var(--acc);font-weight:600;font-variant-numeric:tabular-nums}
+.boardEmpty{color:var(--dim);font-size:12.5px;padding:18px 6px;text-align:center}
+.floorTag{color:var(--acc);font-size:11px;letter-spacing:.16em;margin-bottom:3px}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="flash"></div>
+<div id="toast"></div>
+
+<div id="hud">
+  <div class="hud-tl">
+    <div class="row"><div class="bar"><i id="hpFill"></i></div><b id="hpTxt">100</b></div>
+    <div class="row"><span>弹药</span><b id="ammoTxt">15 / 60</b><span id="reloadTxt" style="color:var(--acc)"></span></div>
+  </div>
+  <div class="hud-tr">
+    <div class="floorTag" id="floorTxt">第 1 层</div>
+    <div class="room" id="roomTxt">—</div>
+    <div class="big"><span id="aliveTxt">0</span><small> 目标</small></div>
+    <div id="progTxt">0 / 0 房间已清</div>
+  </div>
+  <div class="hud-bl">
+    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动 &nbsp; 鼠标 瞄准 &nbsp; 左键 射击<br>
+    <kbd>R</kbd> 换弹 &nbsp; <kbd>ESC</kbd>/<kbd>P</kbd> 暂停 &nbsp; <kbd>Q</kbd> 退出
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="card" id="startCard">
+    <div class="tag">2D TACTICAL CQB · V1</div>
+    <h1>CBQ<span>室内清除</span></h1>
+    <div class="sub">
+      每局随机生成一片室内楼层：小房间随机拼合、走廊随机连通，<br>
+      房间主题、掩体摆法、敌人数都不同。<br>
+      <b style="color:#ffb257">你只有 120° 视野</b>——锥外全黑，视野外的敌人既不动也不开枪。清空房间，找到并打掉 BOSS。
+    </div>
+    <div class="legend">
+      <span><i style="background:#5a6472"></i>办公区</span>
+      <span><i style="background:#7a6748"></i>库房</span>
+      <span><i style="background:#4a6a72"></i>机房</span>
+      <span><i style="background:#6a5570"></i>档案室</span>
+      <span><i style="background:#7a5555"></i>医务室</span>
+      <span><i style="background:#6b6b4d"></i>食堂</span>
+    </div>
+    <div class="nameRow">
+      <span>代号</span>
+      <input id="nameInput" maxlength="10" value="无名特工" autocomplete="off" spellcheck="false">
+      <button id="btnSaveName">保存代号</button>
+      <span id="nameHint" style="color:#6f7b8a;font-size:11px"></span>
+    </div>
+    <div class="titleBest" id="titleBest"></div>
+    <div class="keys">
+      <div class="k">W A S D</div><div class="d">移动（贴墙自动侧滑）</div>
+      <div class="k">鼠标 / 左键</div><div class="d">瞄准 / 射击（按住连发）</div>
+      <div class="k">R</div><div class="d">换弹（打空自动换）</div>
+      <div class="k">ESC / P</div><div class="d">暂停</div>
+      <div class="k">Q</div><div class="d">退出到标题</div>
+    </div>
+    <div class="btns">
+      <button class="primary" id="btnStart">开始突入</button>
+      <button id="btnHow">简报</button>
+      <button id="btnBoard">排行榜</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="howCard">
+    <div class="tag">简报</div>
+    <h2>对手的规则</h2>
+    <div class="sub">
+      · <b>层数</b>：打倒 1 个 BOSS 算通过 1 层，每层都会换一张新地图、敌人更强。死在半路，本局结束。<br>
+      · <b>视野</b>：120° 锥形，锥外全黑；视野外和黑暗里的敌人不显示。<br>
+      · <b>黑暗规则</b>：没察觉你的敌人待在黑暗里就完全静止；你已经暴露的位置会招来追兵，但他们看不见你时不开枪。<br>
+      · <b>门</b>：走近自动开，开枪会开靠近的门；敌人开门有半秒前摇。<br>
+      · <b>对手视野</b>：墙、掩体、关着的门都会挡他们的视线，只有真看见你才会开火。<br>
+      · <b>听声</b>：枪声会把整片区域的敌人引过来，但他们只会「怀疑」并去查看，不会直接知道你的位置。<br>
+      · <b>补给</b>：医疗包 +30 血，弹药箱 +15 发；敌人也会掉。每通过一层会补一点血量与弹药。<br>
+      · <b>排行榜</b>：只存在本机，记录代号和通过的层数，最多显示 9999999 层。代号有一次改名机会。
+    </div>
+    <div class="btns"><button class="primary" id="btnBack">返回</button></div>
+  </div>
+
+  <div class="card hidden" id="pauseCard">
+    <div class="tag">暂停</div>
+    <h2>保持静默</h2>
+    <div class="sub" id="pauseSub">已暂停。</div>
+    <div class="btns">
+      <button class="primary" id="btnResume">继续（ESC）</button>
+      <button id="btnQuit">退出到标题（Q）</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="floorCard">
+    <div class="tag">第 <span id="floorNo">1</span> 层 · 已清除</div>
+    <h2>继续下潜？</h2>
+    <div class="sub" id="floorSub"></div>
+    <div class="stats" id="floorStats"></div>
+    <div class="btns">
+      <button class="primary" id="btnNextFloor">进入下一层</button>
+      <button id="btnCashOut">结束本局并记录</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="boardCard">
+    <div class="tag">本地排行榜 · 只存在本机</div>
+    <h2>通关层数</h2>
+    <div class="sub">1 层 = 打倒 1 个 BOSS。同一代号只保留最好成绩，上限 9999999 层。</div>
+    <div class="board" id="boardList"></div>
+    <div class="btns">
+      <button class="primary" id="btnBoardBack">返回</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="endCard">
+    <div class="tag" id="endTag">任务结束</div>
+    <h2 id="endTitle">楼层已清空</h2>
+    <div class="sub" id="endSub"></div>
+    <div class="stats" id="endStats"></div>
+    <div class="btns">
+      <button class="primary" id="btnAgain">再来一局（新楼层）</button>
+      <button id="btnBoardEnd">查看排行榜</button>
+      <button id="btnToTitle">回到标题</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   CBQ · 2D 随机室内清除
+   单文件 / 无外部依赖 / WASD + 鼠标
+   ============================================================ */
+
+// ---------------- 常量 ----------------
+const TS = 28;
+const CELL = 19;                 // 每个格子（房间 + 墙 + 走廊余量）的瓦片数
+const GRID = 7;                  // 7 x 7 的房间格
+const MAP_W = CELL * GRID, MAP_H = CELL * GRID;
+const WORLD_W = MAP_W * TS, WORLD_H = MAP_H * TS;
+
+const P_SPEED = 224, P_RADIUS = 10;
+const MAG_SIZE = 15, RELOAD_TIME = 1.1, FIRE_CD = 0.145, BULLET_DMG = 22;
+const STEPS_PER_FRAME = 1 / 120;
+// 视野：120° 锥形
+const FOV_DEG = 120;
+const FOV_HALF = FOV_DEG * Math.PI / 360;
+const FOV_RADIUS = 560;            // 锥形可视距离（像素）
+const FOV_NEAR_R = 46;             // 贴身可见半径（兜底，背后也能看到脚边）
+const FOV_SAMPLES = 90;            // 锥形射线采样数
+
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+// 暗层画布：先画世界 -> 锥外压黑 -> 锥内提亮
+const darkCv = document.createElement('canvas');
+const dctx = darkCv.getContext('2d');
+let VIEW = { w: 1280, h: 720 };
+
+// ---------------- 工具 ----------------
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
+const lerp = (a, b, t) => a + (b - a) * t;
+const dist2 = (ax, ay, bx, by) => { const x = ax - bx, y = ay - by; return x * x + y * y; };
+const dist = (ax, ay, bx, by) => Math.sqrt(dist2(ax, ay, bx, by));
+function angDiff(a, b) { let d = (a - b + Math.PI) % TAU; if (d < 0) d += TAU; return d - Math.PI; }
+function lerpAngle(a, b, t) { return a + angDiff(b, a) * clamp(t, 0, 1); }
+function hash2(x, y) {
+  let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+function makeRng(seed) {
+  let s = seed >>> 0;
+  return function () {
+    s |= 0; s = s + 0x6D2B79F5 | 0;
+    let t = Math.imul(s ^ s >>> 15, 1 | s);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// ---------------- 本地存档 / 排行榜 ----------------
+// 只存在本机 localStorage。榜单记录：代号 + 通关层数（1 层 = 1 个 BOSS）
+const SAVE_KEY = 'cbq_save_v2';
+const MAX_FLOORS = 9999999;       // 榜单上限
+const BOARD_MAX = 30;             // 最多保留的条目数
+const FLOOR_HEAL = 35;            // 每通过一层恢复的生命
+const Save = {
+  data: { name: '无名特工', nameSet: false, renamed: false, scores: [] },
+  load() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (!d || typeof d !== 'object') return;
+      if (typeof d.name === 'string' && d.name.trim()) this.data.name = d.name.trim().slice(0, 10);
+      this.data.nameSet = !!d.nameSet;
+      this.data.renamed = !!d.renamed;
+      if (Array.isArray(d.scores)) {
+        this.data.scores = d.scores
+          .filter(s => s && typeof s.name === 'string' && Number.isFinite(s.floors))
+          .map(s => ({
+            name: String(s.name).slice(0, 10),
+            floors: clamp(Math.floor(s.floors), 0, MAX_FLOORS),
+            ts: Number(s.ts) || 0
+          }));
+        this.data.scores = this.sortAndDedupe(this.data.scores);
+      }
+    } catch (e) { /* 隐私模式 / 禁用存储：静默降级为内存 */ }
+  },
+  sortAndDedupe(list) {
+    const best = new Map();
+    for (const s of list) {
+      const prev = best.get(s.name);
+      if (!prev || s.floors > prev.floors) best.set(s.name, s);
+    }
+    return [...best.values()]
+      .sort((a, b) => b.floors - a.floors || a.ts - b.ts)
+      .slice(0, BOARD_MAX);
+  },
+  persist() {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) {}
+  },
+  setName(v, isRename) {
+    const n = String(v || '').trim().slice(0, 10);
+    if (!n) return false;
+    if (isRename && this.data.renamed) return false;
+    this.data.name = n;
+    this.data.nameSet = true;
+    if (isRename) this.data.renamed = true;
+    this.persist();
+    return true;
+  },
+  record(floors) {
+    const f = clamp(Math.floor(floors || 0), 0, MAX_FLOORS);
+    this.data.scores.push({ name: this.data.name, floors: f, ts: Date.now() });
+    this.data.scores = this.sortAndDedupe(this.data.scores);
+    this.persist();
+    return f;
+  },
+  best() {
+    return this.data.scores.reduce((m, s) => Math.max(m, s.floors), 0);
+  },
+  rankOf(name) {
+    return this.data.scores.findIndex(s => s.name === name);
+  }
+};
+Save.load();
+
+// ---------------- 音频 ----------------
+const Sound = {
+  ac: null, master: null, ok: true,
+  init() {
+    if (this.ac) return;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      this.ac = new AC();
+      this.master = this.ac.createGain();
+      this.master.gain.value = 0.45;
+      this.master.connect(this.ac.destination);
+    } catch (e) { this.ok = false; }
+  },
+  noise(dur, freq, q, vol, type) {
+    if (!this.ok || !this.ac) return;
+    const ac = this.ac, t = ac.currentTime;
+    const n = Math.max(1, (ac.sampleRate * dur) | 0);
+    const buf = ac.createBuffer(1, n, ac.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = ac.createBufferSource(); src.buffer = buf;
+    const f = ac.createBiquadFilter(); f.type = type || 'lowpass';
+    f.frequency.value = freq; f.Q.value = q || 1;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+    src.connect(f); f.connect(g); g.connect(this.master);
+    src.start(t); src.stop(t + dur + 0.02);
+  },
+  tone(freq, dur, vol, type, slide) {
+    if (!this.ok || !this.ac) return;
+    const ac = this.ac, t = ac.currentTime;
+    const o = ac.createOscillator(); o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, slide), t + dur);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(this.master);
+    o.start(t); o.stop(t + dur + 0.02);
+  },
+  shot() { this.noise(0.09, 2500, 0.7, 0.30, 'highpass'); this.tone(155, 0.1, 0.18, 'square', 60); },
+  eshot() { this.noise(0.06, 1500, 0.6, 0.085, 'bandpass'); },
+  ehit() { this.tone(540, 0.035, 0.06, 'square', 500); },
+  kill() { this.noise(0.22, 520, 0.6, 0.26, 'lowpass'); this.tone(120, 0.24, 0.15, 'sawtooth', 48); },
+  playerHurt() { this.tone(90, 0.18, 0.28, 'sawtooth', 40); this.noise(0.1, 420, 0.5, 0.14); },
+  reload() { this.tone(700, 0.03, 0.09, 'square', 680); const t = this; setTimeout(() => t.tone(430, 0.05, 0.11, 'square', 410), 250); },
+  empty() { this.tone(230, 0.03, 0.08, 'square', 210); },
+  door() { this.noise(0.15, 340, 0.8, 0.11, 'lowpass'); },
+  pickup() { this.tone(720, 0.06, 0.1, 'sine', 980); const t = this; setTimeout(() => t.tone(1080, 0.07, 0.09, 'sine', 1260), 55); },
+  hitmark() { this.tone(1250, 0.025, 0.05, 'triangle'); },
+  win() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => Sound.tone(f, 0.3, 0.13, 'triangle'), i * 130)); },
+  lose() { [330, 262, 196, 147].forEach((f, i) => setTimeout(() => Sound.tone(f, 0.45, 0.14, 'sawtooth'), i * 170)); }
+};
+
+// ---------------- 房间主题 ----------------
+const THEMES = {
+  office:   { name: '办公区', floor: [42, 45, 52], wall: [70, 75, 86], prop: 'desks' },
+  storage:  { name: '库房',   floor: [50, 44, 35], wall: [84, 72, 55], prop: 'crates' },
+  server:   { name: '机房',   floor: [35, 47, 53], wall: [60, 78, 87], prop: 'racks' },
+  archive:  { name: '档案室', floor: [44, 39, 51], wall: [74, 64, 86], prop: 'shelves' },
+  medical:  { name: '医务室', floor: [47, 41, 43], wall: [80, 66, 68], prop: 'beds' },
+  cafeteria:{ name: '食堂',   floor: [47, 47, 39], wall: [80, 80, 64], prop: 'tables' },
+  security: { name: '值班室', floor: [43, 44, 47], wall: [72, 74, 79], prop: 'desks' },
+  boss:     { name: '指挥室', floor: [56, 37, 39], wall: [96, 58, 60], prop: 'boss' }
+};
+const THEME_KEYS = ['office','storage','server','archive','medical','cafeteria','security'];
+
+// ---------------- 全局 ----------------
+let G = null;
+let lastNow = 0, simAcc = 0;
+
+function newGame() {
+  return {
+    mode: 'menu',
+    time: 0, kills: 0, shots: 0, hits: 0,
+    roomsCleared: 0,
+    floor: 1, floorsCleared: 0, scoreRecorded: false,
+    diffHp: 1, diffDmg: 1,
+    camera: { x: 0, y: 0, sx: 0, sy: 0, shake: 0 },
+    player: null,
+    enemies: [], pickups: [], particles: [], tracers: [], casings: [], decals: [], floats: [], doorFx: [],
+    pointer: { x: 0, y: 0, inside: false, screenX: 0, screenY: 0 },
+    keys: {}, mouseDown: false,
+    bossDead: false, bossRoom: -1,
+    // 视野
+    fov: { dist: new Float32Array(FOV_SAMPLES), poly: [], updated: false },
+    seed: 0, frame: 0
+  };
+}
+
+// ---------------- 地图容器 ----------------
+let grid = new Uint8Array(0);       // 0 墙 / 1 地面 / 2 门 / 3 掩体 / 9 空（墙外）
+let roomAt = new Int16Array(0);     // 每格所属房间
+let rooms = [];                     // 房间对象
+let doorGroups = [];                // 门（2 格一组）
+let startRoom = 0;
+
+const tI = (x, y) => y * MAP_W + x;
+const inMap = (x, y) => x >= 0 && y >= 0 && x < MAP_W && y < MAP_H;
+function tile(x, y) { return inMap(x, y) ? grid[tI(x, y)] : 0; }
+function setTile(x, y, v) { if (inMap(x, y)) grid[tI(x, y)] = v; }
+
+// ---------------- 随机楼层生成 ----------------
+const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+function genLevel(seed) {
+  const rng = makeRng(seed);
+  const ri = (a, b) => a + Math.floor(rng() * (b - a + 1));
+  const rf = (a, b) => a + rng() * (b - a);
+
+  grid = new Uint8Array(MAP_W * MAP_H);
+  roomAt = new Int16Array(MAP_W * MAP_H).fill(-1);
+  rooms = []; doorGroups = [];
+
+  const cellKey = (cx, cy) => cy * GRID + cx;
+  const cells = new Map();
+  const startC = [3, 3];
+  cells.set(cellKey(3, 3), { cx: 3, cy: 3, links: [], dist: 0 });
+
+  // ---- 随机生长房间格 ----
+  const TARGET = 12 + Math.floor(rng() * 3);          // 12~14 间
+  let frontier = [startC];
+  let guard = 0;
+  while (cells.size < TARGET && guard++ < 600 && frontier.length) {
+    const idx = Math.floor(rng() * frontier.length);
+    const [cx, cy] = frontier[idx];
+    // 随机方向；优先能长出去的方向
+    const dirs = DIRS.slice().sort(() => rng() - 0.5);
+    let grew = false;
+    for (const [dx, dy] of dirs) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || ny < 0 || nx >= GRID || ny >= GRID) continue;
+      if (cells.has(cellKey(nx, ny))) continue;
+      const c = { cx: nx, cy: ny, links: [], dist: 0 };
+      cells.set(cellKey(nx, ny), c);
+      cells.get(cellKey(cx, cy)).links.push(nx + ',' + ny);
+      c.links.push(cx + ',' + cy);
+      frontier.push([nx, ny]);
+      grew = true;
+      break;
+    }
+    if (!grew) frontier = frontier.filter(f => f[0] !== cx || f[1] !== cy);
+  }
+  // ---- 额外环路（让楼层不只是一条线） ----
+  const cellList = [...cells.values()];
+  const loopCount = 1 + Math.floor(rng() * 3);
+  for (let i = 0; i < loopCount * 6; i++) {
+    const a = cellList[Math.floor(rng() * cellList.length)];
+    if (!a) break;
+    const dirs = DIRS.slice().sort(() => rng() - 0.5);
+    for (const [dx, dy] of dirs) {
+      const nb = cells.get(cellKey(a.cx + dx, a.cy + dy));
+      if (!nb) continue;
+      const k1 = nb.cx + ',' + nb.cy, k2 = a.cx + ',' + a.cy;
+      if (a.links.includes(k1)) continue;
+      a.links.push(k1); nb.links.push(k2);
+      break;
+    }
+  }
+
+  // ---- 距离（BFS）与 BOSS 位置 ----
+  const keyOf = c => c.cx + ',' + c.cy;
+  const nodes = [...cells.values()];
+  nodes.forEach(n => n.dist = -1);
+  const startNode = cells.get(cellKey(3, 3));
+  startNode.dist = 0;
+  const q = [startNode];
+  const byKey = new Map(nodes.map(n => [keyOf(n), n]));
+  while (q.length) {
+    const cur = q.shift();
+    for (const k of cur.links) {
+      const nb = byKey.get(k);
+      if (nb && nb.dist < 0) { nb.dist = cur.dist + 1; q.push(nb); }
+    }
+  }
+  let bossNode = startNode;
+  nodes.forEach(n => { if (n.dist > bossNode.dist) bossNode = n; });
+
+  // ---- 创建房间 ----
+  const themes = THEME_KEYS.slice();
+  // 洗牌
+  for (let i = themes.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const t = themes[i]; themes[i] = themes[j]; themes[j] = t;
+  }
+  let themeI = 0;
+  const roomList = [];
+  nodes.forEach((n, i) => {
+    const x0 = n.cx * CELL, y0 = n.cy * CELL;
+    // 房间尺寸随机（内部 9~15 格），居中在 19x19 的格子里
+    let w, h;
+    if (n === startNode) {
+      w = 13; h = 13;
+    } else if (n === bossNode) {
+      w = 15; h = 15;
+    } else {
+      w = 9 + Math.floor(rng() * 7);
+      h = 9 + Math.floor(rng() * 7);
+      if (w + h > 24) { const cut = (w + h - 24) >> 1; w = Math.max(9, w - cut); h = Math.max(9, h - cut); }
+    }
+    const rx = x0 + Math.floor((CELL - w) / 2);
+    const ry = y0 + Math.floor((CELL - h) / 2);
+    const r = {
+      idx: i, gx: n.cx, gy: n.cy, cell: n,
+      x: rx, y: ry, w, h,                     // 内部
+      x0, y0,
+      cx: rx + w / 2, cy: ry + h / 2,
+      themeKey: 'office', theme: THEMES.office,
+      name: '', cleared: false, discovered: false,
+      total: 0, alive: 0, isBoss: false, isStart: false, dist: n.dist,
+      doorIds: []
+    };
+    if (n === startNode) {
+      r.themeKey = 'security'; r.theme = THEMES.security; r.name = '入口 · 值班室';
+      r.discovered = true; r.isStart = true;
+    } else if (n === bossNode) {
+      r.themeKey = 'boss'; r.theme = THEMES.boss; r.name = '指挥室';
+      r.isBoss = true;
+    } else {
+      r.themeKey = themes[themeI % themes.length]; themeI++;
+      r.theme = THEMES[r.themeKey];
+      r.name = r.theme.name;
+    }
+    roomList.push(r);
+  });
+  // 房间编号字母
+  let li = 0;
+  roomList.forEach(r => {
+    r.letter = String.fromCharCode(65 + (li++));
+  });
+  rooms = roomList;
+  startRoom = roomList.findIndex(r => r.isStart);
+  if (startRoom < 0) startRoom = 0;
+  const bossRoomIdx = roomList.findIndex(r => r.isBoss);
+  G_bossRoomStatic = bossRoomIdx;
+
+  // ---- 挖房间 + 掩体 ----
+  roomList.forEach(r => {
+    for (let y = r.y; y < r.y + r.h; y++) {
+      for (let x = r.x; x < r.x + r.w; x++) {
+        if (!inMap(x, y)) continue;
+        grid[tI(x, y)] = 1; roomAt[tI(x, y)] = r.idx;
+      }
+    }
+    buildProps(r, rng, ri, rf);
+    ensureReachable(r, rng, ri);
+  });
+
+  // ---- 走廊 ----
+  const edgeDoor = {};   // "gx,gy|dir" -> doorway cells
+  nodes.forEach(n => {
+    n.links.forEach(k => {
+      const nb = byKey.get(k);
+      if (!nb) return;
+      // 连接顺序去重
+      const a = roomList.find(r => r.gx === n.cx && r.gy === n.cy);
+      const b = roomList.find(r => r.gx === nb.cx && r.gy === nb.cy);
+      if (!a || !b) return;
+      const key = Math.min(a.idx, b.idx) + '-' + Math.max(a.idx, b.idx);
+      if (edgeDoor[key]) {
+        const d = edgeDoor[key];
+        if (!a.doorIds.includes(d)) a.doorIds.push(d);
+        if (!b.doorIds.includes(d)) b.doorIds.push(d);
+        return;
+      }
+      const dg = connectRooms(a, b);
+      if (!dg) return;
+      edgeDoor[key] = dg.id;
+      a.doorIds.push(dg.id); b.doorIds.push(dg.id);
+    });
+  });
+  roomList.forEach(r => { if (!r.doorIds) r.doorIds = []; });
+
+  // ---- 掩体后再校验可达（房间内） ----
+  return { rng, ri, rf, roomList, nodes, bossNode };
+}
+let G_bossRoomStatic = -1;
+
+function connectRooms(a, b) {
+  const horiz = a.gy === b.gy;
+  const dg = { id: doorGroups.length, tiles: [], open: false, anim: 0, timer: 0, a: a.idx, b: b.idx };
+  if (horiz) {
+    const [L, R] = a.gx < b.gx ? [a, b] : [b, a];
+    // 连接口对齐到两间房都能接受的纵坐标（房间尺寸现在是随机的）
+    let y = Math.floor(L.y + L.h / 2);
+    y = Math.max(y, L.y + 1);
+    y = Math.min(y, L.y + L.h - 2);
+    y = Math.max(y, R.y + 1);
+    y = Math.min(y, R.y + R.h - 2);
+    // 走廊 2 格高
+    for (let x = L.x + L.w; x <= R.x - 1; x++) {
+      for (let yy = y; yy <= y + 1; yy++) {
+        if (!inMap(x, yy)) continue;
+        if (roomAt[tI(x, yy)] >= 0) continue;
+        grid[tI(x, yy)] = 1;
+      }
+    }
+    // 两侧门
+    const t1 = [L.x + L.w, y], t2 = [L.x + L.w, y + 1];
+    const t3 = [R.x - 1, y], t4 = [R.x - 1, y + 1];
+    [t1, t2, t3, t4].forEach(([x, yy], i) => {
+      if (!inMap(x, yy)) return;
+      grid[tI(x, yy)] = 2;
+      dg.tiles.push([x, yy]);
+    });
+  } else {
+    const [T, B] = a.gy < b.gy ? [a, b] : [b, a];
+    let x = Math.floor(T.x + T.w / 2);
+    x = Math.max(x, T.x + 1);
+    x = Math.min(x, T.x + T.w - 2);
+    x = Math.max(x, B.x + 1);
+    x = Math.min(x, B.x + B.w - 2);
+    for (let y = T.y + T.h; y <= B.y - 1; y++) {
+      for (let xx = x; xx <= x + 1; xx++) {
+        if (!inMap(xx, y)) continue;
+        if (roomAt[tI(xx, y)] >= 0) continue;
+        grid[tI(xx, y)] = 1;
+      }
+    }
+    const t1 = [x, T.y + T.h], t2 = [x + 1, T.y + T.h];
+    const t3 = [x, B.y - 1], t4 = [x + 1, B.y - 1];
+    [t1, t2, t3, t4].forEach(([xx, y]) => {
+      if (!inMap(xx, y)) return;
+      grid[tI(xx, y)] = 2;
+      dg.tiles.push([xx, y]);
+    });
+  }
+  dg.cx = dg.tiles.reduce((s, t) => s + t[0], 0) / dg.tiles.length;
+  dg.cy = dg.tiles.reduce((s, t) => s + t[1], 0) / dg.tiles.length;
+  doorGroups.push(dg);
+  return dg;
+}
+
+function buildProps(r, rng, ri, rf) {
+  const setP = (x, y) => {
+    if (x < r.x + 1 || y < r.y + 1 || x > r.x + r.w - 2 || y > r.y + r.h - 2) return;
+    if (grid[tI(x, y)] !== 1) return;
+    grid[tI(x, y)] = 3;
+  };
+  const kind = r.theme.prop;
+  if (kind === 'desks') {
+    const spots = [[2, 2], [r.w - 4, 2], [2, r.h - 4], [r.w - 4, r.h - 4], [6, 6]];
+    spots.forEach(([ox, oy]) => {
+      if (ox + 2 >= r.w - 1 || oy + 1 >= r.h - 1) return;
+      setP(r.x + ox, r.y + oy); setP(r.x + ox + 1, r.y + oy);
+      setP(r.x + ox, r.y + oy + 1); setP(r.x + ox + 1, r.y + oy + 1);
+      if (rng() < 0.5) setP(r.x + ox + 2, r.y + oy);
+    });
+  } else if (kind === 'crates') {
+    const n = ri(3, 6);
+    for (let i = 0; i < n; i++) {
+      const x = ri(r.x + 1, r.x + r.w - 4), y = ri(r.y + 1, r.y + r.h - 4);
+      const w = rng() < 0.35 ? 2 : 1, h = rng() < 0.35 ? 2 : 1;
+      for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) setP(xx, yy);
+    }
+  } else if (kind === 'racks') {
+    for (let row = 0; row < 2; row++) {
+      const y = r.y + 2 + row * 6;
+      for (let x = r.x + 2; x <= r.x + r.w - 3; x += 3) {
+        setP(x, y); setP(x, y + 1);
+      }
+    }
+    if (rng() < 0.5) { setP(r.x + 2, r.y + 10); setP(r.x + r.w - 3, r.y + 10); }
+  } else if (kind === 'shelves') {
+    for (let col = 0; col < 3; col++) {
+      const x = r.x + 2 + col * 4;
+      for (let y = r.y + 2; y <= r.y + r.h - 4; y += 3) {
+        setP(x, y);
+        if (rng() < 0.6) setP(x + 1, y);
+      }
+    }
+  } else if (kind === 'beds') {
+    const n = ri(2, 4);
+    for (let i = 0; i < n; i++) {
+      const x = ri(r.x + 1, r.x + r.w - 4), y = ri(r.y + 1, r.y + r.h - 3);
+      for (let xx = x; xx < x + 3; xx++) setP(xx, y);
+    }
+    if (rng() < 0.7) setP(r.x + 2, r.y + r.h - 3);
+  } else if (kind === 'tables') {
+    for (let row = 0; row < 2; row++) {
+      const y = r.y + 3 + row * 5;
+      for (let x = r.x + 2; x <= r.x + r.w - 4; x += 4) {
+        for (let xx = x; xx < x + 2; xx++) setP(xx, y);
+        if (rng() < 0.6) setP(x, y + 1);
+      }
+    }
+  } else if (kind === 'boss') {
+    // 中央指挥台
+    const cxp = r.x + 5, cyp = r.y + 5;
+    for (let x = cxp; x < cxp + 3; x++) for (let y = cyp; y < cyp + 3; y++) setP(x, y);
+    [[2, 2], [r.w - 3, 2], [2, r.h - 3], [r.w - 3, r.h - 3]].forEach(([ox, oy]) => {
+      setP(r.x + ox, r.y + oy);
+    });
+  } else {
+    // 默认：四角小掩体
+    [[2, 2], [r.w - 3, 2], [2, r.h - 3], [r.w - 3, r.h - 3]].forEach(([ox, oy]) => {
+      if (rng() < 0.5) setP(r.x + ox, r.y + oy);
+    });
+  }
+}
+
+// 房间内部可达性：从中心泛洪，若掩体孤立了某片区域则清掉部分掩体
+function ensureReachable(r, rng, ri) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const seen = new Set();
+    let sx = -1, sy = -1;
+    for (let y = r.y + 1; y < r.y + r.h - 1 && sx < 0; y++) {
+      for (let x = r.x + 1; x < r.x + r.w - 1; x++) {
+        if (grid[tI(x, y)] === 1) { sx = x; sy = y; break; }
+      }
+    }
+    if (sx < 0) return;
+    const stack = [[sx, sy]]; seen.add(tI(sx, sy));
+    while (stack.length) {
+      const [x, y] = stack.pop();
+      for (const [dx, dy] of DIRS) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < r.x || ny < r.y || nx >= r.x + r.w || ny >= r.y + r.h) continue;
+        if (grid[tI(nx, ny)] !== 1) continue;
+        if (seen.has(tI(nx, ny))) continue;
+        seen.add(tI(nx, ny)); stack.push([nx, ny]);
+      }
+    }
+    let total = 0;
+    for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) {
+      if (grid[tI(x, y)] === 1 || grid[tI(x, y)] === 2) total++;
+    }
+    if (seen.size >= total * 0.86) return;
+    // 打掉一部分掩体
+    const props = [];
+    for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) {
+      if (grid[tI(x, y)] === 3) props.push([x, y]);
+    }
+    for (let i = 0; i < Math.ceil(props.length / 2) && props.length; i++) {
+      const j = Math.floor(rng() * props.length);
+      grid[tI(props[j][0], props[j][1])] = 1;
+      props.splice(j, 1);
+    }
+  }
+}
+
+// ---------------- 碰撞 / 视线 ----------------
+function isDoorTile(x, y) { return tile(x, y) === 2; }
+function doorGroupAt(x, y) {
+  for (const d of doorGroups) {
+    for (const t of d.tiles) if (t[0] === x && t[1] === y) return d;
+  }
+  return null;
+}
+function solid(x, y) {
+  const t = tile(x, y);
+  if (t === 0) return true;
+  if (t === 2) {
+    const d = doorGroupAt(x, y);
+    return !!d && d.anim < 0.55;
+  }
+  if (t === 3) return true;
+  return false;
+}
+function walkable(x, y) { return !solid(x, y); }
+
+// A* 用：门视为可通行（到门再开）
+function walkablePath(x, y) {
+  const t = tile(x, y);
+  return t === 1 || t === 2;
+}
+
+function circleHitsWall(cx, cy, rad) {
+  const x0 = Math.floor((cx - rad) / TS), x1 = Math.floor((cx + rad) / TS);
+  const y0 = Math.floor((cy - rad) / TS), y1 = Math.floor((cy + rad) / TS);
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    if (!solid(x, y)) continue;
+    const rx = x * TS, ry = y * TS;
+    const nx = clamp(cx, rx, rx + TS), ny = clamp(cy, ry, ry + TS);
+    if (dist2(cx, cy, nx, ny) < rad * rad) return true;
+  }
+  return false;
+}
+function moveEntity(e, dx, dy, rad) {
+  if (dx) {
+    if (!circleHitsWall(e.x + dx, e.y, rad)) e.x += dx;
+    else {
+      const sg = Math.sign(dy) || 1;
+      for (let k = 1; k <= 2; k++) {
+        if (!circleHitsWall(e.x + dx, e.y + sg * k * 1.2, rad)) { e.x += dx; e.y += sg * k * 0.7; break; }
+      }
+    }
+  }
+  if (dy) {
+    if (!circleHitsWall(e.x, e.y + dy, rad)) e.y += dy;
+    else {
+      const sg = Math.sign(dx) || 1;
+      for (let k = 1; k <= 2; k++) {
+        if (!circleHitsWall(e.x + sg * k * 1.2, e.y + dy, rad)) { e.y += dy; e.x += sg * k * 0.7; break; }
+      }
+    }
+  }
+}
+function hasLOS(ax, ay, bx, by) {
+  const d = dist(ax, ay, bx, by);
+  if (d < 2) return true;
+  const steps = Math.ceil(d / 6);
+  const dx = (bx - ax) / steps, dy = (by - ay) / steps;
+  let x = ax, y = ay;
+  for (let i = 1; i < steps; i++) {
+    x += dx; y += dy;
+    if (solid(Math.floor(x / TS), Math.floor(y / TS))) return false;
+  }
+  return true;
+}
+// 精确射线：返回首个实心瓦片（Amanatides-Woo DDA），无命中返回 maxT
+function rayCastSolid(ox, oy, dx, dy, maxT) {
+  let mapX = Math.floor(ox / TS), mapY = Math.floor(oy / TS);
+  const stepX = dx > 0 ? 1 : -1, stepY = dy > 0 ? 1 : -1;
+  const tDeltaX = dx !== 0 ? Math.abs(TS / dx) : Infinity;
+  const tDeltaY = dy !== 0 ? Math.abs(TS / dy) : Infinity;
+  const nextX = (dx > 0 ? (mapX + 1) * TS : mapX * TS);
+  const nextY = (dy > 0 ? (mapY + 1) * TS : mapY * TS);
+  let tMaxX = dx !== 0 ? (nextX - ox) / dx : Infinity;
+  let tMaxY = dy !== 0 ? (nextY - oy) / dy : Infinity;
+  if (tMaxX < 0) tMaxX = 0;
+  if (tMaxY < 0) tMaxY = 0;
+  let t = 0;
+  for (let i = 0; i < 512; i++) {
+    if (tMaxX < tMaxY) { t = tMaxX; mapX += stepX; tMaxX += tDeltaX; }
+    else { t = tMaxY; mapY += stepY; tMaxY += tDeltaY; }
+    if (t > maxT) return maxT;
+    if (solid(mapX, mapY)) return Math.max(0, t);
+  }
+  return maxT;
+}
+// 线段是否被实心瓦片阻挡（用于命中确认，开销小）
+function firstSolidTile(ax, ay, bx, by) {
+  const d = dist(ax, ay, bx, by);
+  if (d < 0.001) return false;
+  const dx = (bx - ax) / d, dy = (by - ay) / d;
+  return rayCastSolid(ax, ay, dx, dy, d) < d - 0.01;
+}
+function rayCircle(ox, oy, dx, dy, cx, cy, cr) {
+  const fx = ox - cx, fy = oy - cy;
+  const b = 2 * (fx * dx + fy * dy);
+  const c = fx * fx + fy * fy - cr * cr;
+  const disc = b * b - 4 * c;
+  if (disc < 0) return -1;
+  const sq = Math.sqrt(disc);
+  const t1 = (-b - sq) / 2;
+  const t2 = (-b + sq) / 2;
+  if (t1 > 0.01) return t1;
+  if (t2 > 0.01) return t2;
+  return -1;
+}
+
+// ---------------- A* ----------------
+const astar = (function () {
+  const n = MAP_W * MAP_H;
+  let g, came, open, f, mark;
+  function init() {
+    g = new Float32Array(n); came = new Int32Array(n);
+    f = new Float32Array(n); mark = new Uint8Array(n); open = [];
+  }
+  function push(i) {
+    open.push(i);
+    let k = open.length - 1;
+    while (k > 0) {
+      const p = (k - 1) >> 1;
+      if (f[open[p]] <= f[open[k]]) break;
+      const t = open[p]; open[p] = open[k]; open[k] = t; k = p;
+    }
+  }
+  function pop() {
+    const top = open[0];
+    const last = open.pop();
+    if (open.length) {
+      open[0] = last;
+      let i = 0;
+      for (;;) {
+        const l = i * 2 + 1, r = l + 1;
+        let m = i;
+        if (l < open.length && f[open[l]] < f[open[m]]) m = l;
+        if (r < open.length && f[open[r]] < f[open[m]]) m = r;
+        if (m === i) break;
+        const t = open[m]; open[m] = open[i]; open[i] = t; i = m;
+      }
+    }
+    return top;
+  }
+  function find(sx, sy, tx, ty) {
+    if (!g) init();
+    if (!inMap(sx, sy) || !inMap(tx, ty)) return null;
+    // 目标不可走时，就近找一个
+    if (!walkablePath(tx, ty)) {
+      let best = null, bd = 1e9;
+      for (let r = 1; r <= 4; r++) {
+        for (let oy = -r; oy <= r; oy++) for (let ox = -r; ox <= r; ox++) {
+          const nx = tx + ox, ny = ty + oy;
+          if (!inMap(nx, ny) || !walkablePath(nx, ny)) continue;
+          const d = ox * ox + oy * oy;
+          if (d < bd) { bd = d; best = [nx, ny]; }
+        }
+        if (best) break;
+      }
+      if (!best) return null;
+      tx = best[0]; ty = best[1];
+    }
+    const start = tI(sx, sy), goal = tI(tx, ty);
+    if (start === goal) return { x: tx, y: ty, len: 0 };
+    g.fill(1e9); came.fill(-1); mark.fill(0);
+    open.length = 0;
+    g[start] = 0; f[start] = 0;
+    push(start);
+    let guard = 0;
+    while (open.length && guard++ < 4000) {
+      const cur = pop();
+      if (cur === goal) break;
+      const cx = cur % MAP_W, cy = (cur / MAP_W) | 0;
+      const cg = g[cur];
+      for (let k = 0; k < 4; k++) {
+        const nx = cx + (k === 0 ? 1 : k === 1 ? -1 : 0);
+        const ny = cy + (k === 2 ? 1 : k === 3 ? -1 : 0);
+        if (!inMap(nx, ny)) continue;
+        if (!walkablePath(nx, ny)) continue;
+        const ni = tI(nx, ny);
+        const ng = cg + 1;
+        if (ng < g[ni]) {
+          g[ni] = ng; came[ni] = cur;
+          f[ni] = ng + Math.abs(nx - tx) + Math.abs(ny - ty);
+          push(ni);
+        }
+      }
+    }
+    if (goal !== start && came[goal] < 0) return null;
+    const path = [];
+    let c = goal, steps = 0;
+    while (c !== start && steps++ < 6000) {
+      path.push({ x: c % MAP_W, y: (c / MAP_W) | 0 });
+      c = came[c];
+      if (c < 0) return null;
+    }
+    path.reverse();
+    return { x: tx, y: ty, len: path.length, path };
+  }
+  return { find };
+})();
+
+// ---------------- 玩家 / 敌人 ----------------
+function makePlayer(tx, ty) {
+  return {
+    x: tx * TS + TS / 2, y: ty * TS + TS / 2, r: P_RADIUS,
+    angle: 0, hp: 100, maxHp: 100,
+    mag: MAG_SIZE, reserve: 60, reloading: 0, fireCd: 0,
+    invuln: 0, hurtFx: 0, kick: 0, step: 0, moving: false, hitmark: 0
+  };
+}
+const ENEMY_TYPES = {
+  grunt: { hp: 46, speed: 84, vision: 470, cd: 1.15, dmg: 9, spread: 0.10, r: 10 },
+  heavy: { hp: 104, speed: 62, vision: 520, cd: 1.55, dmg: 15, spread: 0.12, r: 13 },
+  boss:  { hp: 460, speed: 72, vision: 640, cd: 0.8, dmg: 13, spread: 0.08, r: 19 }
+};
+function makeEnemy(tx, ty, type, roomIdx, rng) {
+  const T = ENEMY_TYPES[type];
+  const mul = 1 + roomIdx * 0.02;
+  return {
+    x: tx * TS + TS / 2, y: ty * TS + TS / 2, r: T.r, type,
+    hp: Math.round(T.hp * mul), maxHp: Math.round(T.hp * mul),
+    speed: T.speed, vision: T.vision, cd: T.cd, dmg: T.dmg, spread: T.spread,
+    room: roomIdx,
+    state: 'idle', aim: rng ? rng() * TAU : Math.random() * TAU,
+    fireCd: 0.4 + (rng ? rng() : Math.random()) * 0.9,
+    flash: 0, dead: false, deadT: 0,
+    lastX: 0, lastY: 0, lostT: 0, searchT: 0,
+    path: null, pathI: 0, repathT: 0, stuckT: 0, lastPos: { x: 0, y: 0 },
+    strafe: (rng ? rng() : Math.random()) < 0.5 ? 1 : -1, strafeT: 0,
+    burst: 0, alertT: 0, step: 0, visible: false
+  };
+}
+
+// ---------------- 生成整局 ----------------
+// 出生点：入口房里离最近的门最远的一侧（尽量离墙留出余量）
+function pickSpawn(room) {
+  const doors = (room.doorIds || []).map(id => doorGroups[id]).filter(Boolean);
+  const cands = [];
+  for (let y = room.y + 1; y < room.y + room.h - 1; y++) {
+    for (let x = room.x + 1; x < room.x + room.w - 1; x++) {
+      if (!walkable(x, y)) continue;
+      const margin = Math.min(x - room.x, y - room.y, room.x + room.w - 1 - x, room.y + room.h - 1 - y);
+      let minDoor = 999;
+      for (const d of doors) {
+        const dd = Math.hypot(x + 0.5 - d.cx, y + 0.5 - d.cy);
+        if (dd < minDoor) minDoor = dd;
+      }
+      cands.push({ x, y, margin, minDoor });
+    }
+  }
+  if (!cands.length) return [Math.floor(room.cx), Math.floor(room.cy)];
+  // 先只考虑离墙 >= 2 格的位置；房间太挤再放宽
+  let pool = cands.filter(c => c.margin >= 2);
+  if (pool.length < 3) pool = cands;
+  let best = pool[0], bestScore = -Infinity;
+  for (const c of pool) {
+    // 门距优先，离墙 4 格以内给一点加分（避免贴角）
+    const score = c.minDoor * 10 + Math.min(c.margin, 4) * 6;
+    if (score > bestScore) { bestScore = score; best = c; }
+  }
+  // 返回格坐标（makePlayer 会自己补半格 → 正好落在格中心）
+  return [best.x, best.y];
+}
+
+function spawnLevel(seed, opts) {
+  opts = opts || {};
+  const carry = !!opts.carry;
+  G = G || newGame();
+  G.seed = seed;
+  const info = genLevel(seed);
+  const { rng } = info;
+
+  // 玩家出生：入口房里离门最远的一侧
+  const sr = rooms[startRoom];
+  const sp = pickSpawn(sr);
+  const p = makePlayer(sp[0], sp[1]);
+  if (opts.hp != null) p.hp = clamp(opts.hp, 1, p.maxHp);
+  if (opts.reserve != null) p.reserve = clamp(opts.reserve, 0, 150);
+  G.player = p;
+  G.enemies = []; G.pickups = []; G.particles = []; G.tracers = [];
+  G.casings = []; G.decals = []; G.floats = []; G.doorFx = [];
+  if (!carry) { G.kills = 0; G.shots = 0; G.hits = 0; G.time = 0; }
+  G.roomsCleared = 0;
+  G.bossDead = false; G.bossRoom = rooms.findIndex(r => r.isBoss);
+  G.frame = 0;
+  // 楼层难度：越深血越厚、伤害越高、人越多
+  G.diffHp = clamp(1 + (G.floor - 1) * 0.18, 1, 6);
+  G.diffDmg = clamp(1 + (G.floor - 1) * 0.08, 1, 2.6);
+
+  rooms.forEach(r => {
+    r.alive = 0; r.total = 0; r.cleared = false;
+    if (r.idx !== startRoom && !r.isBoss) r.discovered = false;
+  });
+
+  // 布置敌人与补给
+  rooms.forEach(r => {
+    if (r.idx === startRoom) {
+      // 入口房也放 1-2 个，制造开场紧张感
+      const n = 1 + (rng() < 0.5 ? 1 : 0);
+      placeEnemies(r, n, 'grunt', rng);
+      if (r.total === 0) placeEnemies(r, 1, 'grunt', rng);
+      r.name = '入口 · 值班室';
+      return;
+    }
+    if (r.isBoss) {
+      placeEnemies(r, 1, 'boss', rng, true);
+      placeEnemies(r, 2 + Math.min(2, Math.floor((G.floor - 1) / 3)), 'heavy', rng);
+      if (r.total === 0) placeEnemies(r, 1, 'boss', rng, true);
+      return;
+    }
+    const base = 2 + Math.min(3, Math.floor(r.dist / 2));
+    let n = Math.max(2, base + (rng() < 0.4 ? 1 : 0) - (rng() < 0.2 ? 1 : 0));
+    n += Math.min(3, Math.floor((G.floor - 1) / 2));
+    for (let i = 0; i < n; i++) {
+      let type = 'grunt';
+      if (r.dist >= 3 && rng() < 0.28) type = 'heavy';
+      else if (r.dist >= 2 && rng() < 0.1) type = 'heavy';
+      placeEnemies(r, 1, type, rng);
+    }
+    // 补给
+    const picks = 1 + (rng() < 0.5 ? 1 : 0) + (r.dist >= 4 ? 1 : 0);
+    for (let i = 0; i < picks; i++) {
+      const pos = freeSpotIn(r, rng);
+      if (!pos) continue;
+      G.pickups.push({
+        x: pos[0] * TS + TS / 2, y: pos[1] * TS + TS / 2,
+        kind: rng() < 0.5 ? 'hp' : 'ammo', bob: rng() * TAU, taken: false
+      });
+    }
+  });
+
+  G.camera.x = p.x; G.camera.y = p.y;
+  G.mode = 'menu';
+  updateHUD();
+}
+
+function freeSpotIn(r, rng, avoid) {
+  for (let i = 0; i < 80; i++) {
+    const x = r.x + 1 + Math.floor(rng() * (r.w - 2));
+    const y = r.y + 1 + Math.floor(rng() * (r.h - 2));
+    if (grid[tI(x, y)] !== 1) continue;
+    if (avoid) {
+      let bad = false;
+      for (const a of avoid) {
+        if (dist2(x * TS, y * TS, a.x, a.y) < TS * TS * 2) { bad = true; break; }
+      }
+      if (bad) continue;
+    }
+    return [x, y];
+  }
+  return null;
+}
+function placeEnemies(r, count, type, rng, boss) {
+  const used = [];
+  const isFree = (x, y) => {
+    if (grid[tI(x, y)] !== 1) return false;
+    if (used.some(u => Math.abs(u[0] - x) <= 1 && Math.abs(u[1] - y) <= 1)) return false;
+    if (r.idx === startRoom && G.player &&
+      dist2(x * TS, y * TS, G.player.x, G.player.y) < (TS * 5) * (TS * 5)) return false;
+    return true;
+  };
+  for (let i = 0; i < count; i++) {
+    let pos = null;
+    if (boss && type === 'boss') {
+      // BOSS 靠近房间中央，但中心可能有指挥台，向外扩一圈找
+      const cx = Math.floor(r.cx), cy = Math.floor(r.cy);
+      for (let rad = 0; rad <= 4 && !pos; rad++) {
+        for (let oy = -rad; oy <= rad && !pos; oy++) {
+          for (let ox = -rad; ox <= rad && !pos; ox++) {
+            const x = cx + ox, y = cy + oy;
+            if (isFree(x, y)) pos = [x, y];
+          }
+        }
+      }
+    }
+    if (!pos) {
+      for (let tries = 0; tries < 120 && !pos; tries++) {
+        const x = r.x + 1 + Math.floor(rng() * (r.w - 2));
+        const y = r.y + 1 + Math.floor(rng() * (r.h - 2));
+        if (isFree(x, y)) pos = [x, y];
+      }
+    }
+    if (!pos) continue;
+    used.push(pos);
+    const e = makeEnemy(pos[0], pos[1], type, r.idx, rng);
+    // 楼层难度：血量、伤害随层数上升
+    e.hp = Math.round(e.hp * (G.diffHp || 1));
+    e.maxHp = e.hp;
+    e.dmg = Math.round(e.dmg * (G.diffDmg || 1) * 10) / 10;
+    G.enemies.push(e);
+    r.alive++; r.total++;
+  }
+}
+
+// ---------------- 输入 ----------------
+const $ = id => document.getElementById(id);
+const keys = {};
+
+window.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k === 'escape' || k === ' ') e.preventDefault();
+  if (!G) return;
+  if (k === 'escape' || k === 'p') {
+    if (G.mode === 'playing') { pauseGame(); return; }
+    if (G.mode === 'paused') { resumeGame(); return; }
+  }
+  if (k === 'q') {
+    if (G.mode === 'playing' || G.mode === 'paused') { quitToTitle(); return; }
+  }
+  if (G.mode === 'playing') {
+    if (k === 'r') startReload();
+    if (k === 'w' || k === 'a' || k === 's' || k === 'd') keys[k] = true;
+  }
+});
+window.addEventListener('keyup', e => {
+  keys[e.key.toLowerCase()] = false;
+});
+window.addEventListener('blur', () => {
+  for (const k in keys) keys[k] = false;
+  if (G && G.mode === 'playing') pauseGame();
+});
+
+cv.addEventListener('mousemove', e => {
+  if (!G) return;
+  G.pointer.x = e.clientX; G.pointer.y = e.clientY;
+  G.pointer.inside = true;
+});
+cv.addEventListener('mousedown', e => {
+  if (!G || e.button !== 0) return;
+  Sound.init();
+  G.mouseDown = true;
+});
+window.addEventListener('mouseup', e => { if (G && e.button === 0) G.mouseDown = false; });
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('mouseleave', () => { if (G) G.pointer.inside = false; });
+
+// ---------------- 流程 ----------------
+function showOverlay(id) {
+  $('overlay').classList.remove('hide');
+  ['startCard', 'howCard', 'pauseCard', 'endCard', 'floorCard', 'boardCard'].forEach(c => {
+    $(c).classList.toggle('hidden', c !== id);
+  });
+  $('hud').classList.remove('on');
+  document.body.style.cursor = 'default';
+}
+function hideOverlay() {
+  $('overlay').classList.add('hide');
+  $('hud').classList.add('on');
+}
+function startRun() {
+  Sound.init();
+  G.floor = 1;
+  G.floorsCleared = 0;
+  G.scoreRecorded = false;
+  spawnLevel((Math.random() * 1e9) | 0);
+  G.mode = 'playing';
+  hideOverlay();
+  toast('第 1 层 · ' + rooms.length + ' 个房间 · 种子 ' + G.seed.toString(36).toUpperCase());
+}
+function nextFloor() {
+  if (!G || G.mode !== 'intermission') return;
+  const hp = Math.min(G.player.maxHp, G.player.hp + FLOOR_HEAL);
+  const reserve = Math.max(90, G.player.reserve);
+  G.floor++;
+  spawnLevel((Math.random() * 1e9) | 0, { carry: true, hp, reserve });
+  G.mode = 'playing';
+  hideOverlay();
+  toast('第 ' + G.floor + ' 层 · 种子 ' + G.seed.toString(36).toUpperCase());
+}
+function pauseGame() {
+  if (!G || G.mode !== 'playing') return;
+  G.mode = 'paused'; G.mouseDown = false;
+  const r = roomAtPoint(G.player.x, G.player.y);
+  $('pauseSub').textContent = '第 ' + G.floor + ' 层 · 已通关 ' + fmtFloors(G.floorsCleared) +
+    ' 层 · 当前：' + (r ? r.name : '走廊') + ' · 击杀 ' + G.kills;
+  showOverlay('pauseCard');
+}
+function resumeGame() {
+  if (!G || G.mode !== 'paused') return;
+  G.mode = 'playing';
+  hideOverlay();
+}
+function quitToTitle() {
+  if (!G) return;
+  G.mode = 'menu';
+  refreshNameUI();
+  showOverlay('startCard');
+}
+function openFloorClear() {
+  if (!G || G.mode !== 'playing') return;
+  G.mode = 'intermission';
+  G.mouseDown = false;
+  $('floorNo').textContent = G.floor;
+  $('floorSub').textContent = '第 ' + G.floor + ' 层已清空。下潜会换一张新地图、补 ' + FLOOR_HEAL +
+    ' 点生命和部分弹药，但敌人也会更强。';
+  $('floorStats').innerHTML =
+    '<div>已通关<b>' + fmtFloors(G.floorsCleared) + ' 层</b></div>' +
+    '<div>击杀<b>' + G.kills + '</b></div>' +
+    '<div>本局用时<b>' + fmt(G.time) + '</b></div>' +
+    '<div>剩余生命<b>' + Math.ceil(G.player.hp) + '</b></div>';
+  $('btnNextFloor').textContent = '进入第 ' + (G.floor + 1) + ' 层';
+  showOverlay('floorCard');
+  Sound.win();
+}
+function endRun(reason) {
+  if (!G) return;
+  const dead = reason === 'dead';
+  const floors = clamp(Math.floor(G.floorsCleared), 0, MAX_FLOORS);
+  if (!G.scoreRecorded) {
+    Save.record(floors);
+    G.scoreRecorded = true;
+  }
+  G.mode = 'dead';
+  G.mouseDown = false;
+  const acc = G.shots > 0 ? Math.round(G.hits / G.shots * 100) : 0;
+  const rank = Save.rankOf(Save.data.name);
+  const rankTxt = rank >= 0 ? ('本机排名第 ' + (rank + 1) + ' 名') : '';
+  $('endTag').textContent = dead ? '任务失败' : '本局结束';
+  $('endTitle').textContent = dead ? '你倒下了' : '已撤离';
+  $('endSub').textContent = dead
+    ? '生命归零，本局结束。' + rankTxt
+    : '已结束本局。' + rankTxt;
+  $('endStats').innerHTML =
+    '<div>通关层数<b>' + fmtFloors(floors) + '</b></div>' +
+    '<div>击杀<b>' + G.kills + '</b></div>' +
+    '<div>命中率<b>' + acc + '%</b></div>' +
+    '<div>用时<b>' + fmt(G.time) + '</b></div>';
+  renderBoard();
+  refreshNameUI();
+  showOverlay('endCard');
+  if (dead) Sound.lose(); else Sound.win();
+}
+function fmt(t) {
+  const m = Math.floor(t / 60), s = Math.floor(t % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+function fmtFloors(n) {
+  return Math.min(MAX_FLOORS, Math.max(0, Math.floor(n))).toLocaleString('zh-CN');
+}
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+let toastT = 0;
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('on'), 3200);
+}
+
+// ---------------- 代号 / 排行榜 ----------------
+function refreshNameUI() {
+  const d = Save.data;
+  const input = $('nameInput'), btn = $('btnSaveName'), hint = $('nameHint');
+  input.value = d.name;
+  if (!d.nameSet) {
+    input.disabled = false; btn.disabled = false;
+    btn.textContent = '保存代号';
+    hint.textContent = '起个名字，之后还能改一次';
+  } else if (!d.renamed) {
+    input.disabled = false; btn.disabled = false;
+    btn.textContent = '改名（仅 1 次）';
+    hint.textContent = '当前：' + d.name;
+  } else {
+    input.disabled = true; btn.disabled = true;
+    btn.textContent = '代号已锁定';
+    hint.textContent = '已锁定：' + d.name;
+  }
+  $('titleBest').textContent = Save.best() > 0
+    ? '本机最高：' + fmtFloors(Save.best()) + ' 层'
+    : '';
+}
+function renderBoard() {
+  const list = $('boardList');
+  const scores = Save.data.scores.slice().sort((a, b) => b.floors - a.floors || a.ts - b.ts);
+  if (!scores.length) {
+    list.innerHTML = '<div class="boardEmpty">还没有记录。打通第一层再来。</div>';
+    return;
+  }
+  list.innerHTML = scores.map((s, i) =>
+    '<div class="boardRow' + (s.name === Save.data.name ? ' me' : '') + '">' +
+    '<span class="rank">' + (i + 1) + '</span>' +
+    '<span class="nm">' + escHtml(s.name) + '</span>' +
+    '<span class="fl">' + fmtFloors(s.floors) + ' 层</span>' +
+    '</div>'
+  ).join('');
+}
+let boardReturn = 'startCard';
+
+$('btnStart').onclick = startRun;
+$('btnHow').onclick = () => showOverlay('howCard');
+$('btnBack').onclick = () => { refreshNameUI(); showOverlay('startCard'); };
+$('btnResume').onclick = resumeGame;
+$('btnQuit').onclick = quitToTitle;
+$('btnAgain').onclick = startRun;
+$('btnToTitle').onclick = () => { refreshNameUI(); showOverlay('startCard'); };
+$('btnNextFloor').onclick = nextFloor;
+$('btnCashOut').onclick = () => { if (G && G.mode === 'intermission') endRun('cashout'); };
+$('btnBoard').onclick = () => { boardReturn = 'startCard'; renderBoard(); showOverlay('boardCard'); };
+$('btnBoardEnd').onclick = () => { boardReturn = 'endCard'; renderBoard(); showOverlay('boardCard'); };
+$('btnBoardBack').onclick = () => {
+  if (boardReturn === 'startCard') refreshNameUI();
+  showOverlay(boardReturn);
+};
+$('btnSaveName').onclick = () => {
+  const d = Save.data;
+  const val = $('nameInput').value.trim();
+  if (!val) { toast('代号不能为空'); return; }
+  if (!d.nameSet) {
+    Save.setName(val, false);
+    toast('代号已保存：' + Save.data.name);
+  } else if (!d.renamed) {
+    Save.setName(val, true);
+    toast('改名成功，代号已锁定：' + Save.data.name);
+  } else {
+    toast('代号已锁定，不能再改');
+  }
+  refreshNameUI();
+  renderBoard();
+};
+$('nameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); $('btnSaveName').click(); }
+});
+
+// ---------------- 门 ----------------
+function openDoor(d) {
+  if (d.open) return;
+  d.open = true; d.timer = 0;
+  Sound.door();
+  // 开门会把两侧房间标到小地图上
+  if (d.a != null && rooms[d.a]) rooms[d.a].discovered = true;
+  if (d.b != null && rooms[d.b]) rooms[d.b].discovered = true;
+  G.doorFx.push({ x: d.cx * TS, y: d.cy * TS, t: 0, life: 0.45 });
+  // 附近敌人被惊动
+  G.enemies.forEach(e => {
+    if (e.dead) return;
+    if (dist2(e.x, e.y, d.cx * TS, d.cy * TS) < 320 * 320 && e.state === 'idle') {
+      e.state = 'suspicious'; e.searchT = 1.5;
+    }
+  });
+}
+function updateDoors(dt) {
+  const p = G.player;
+  doorGroups.forEach(d => {
+    const cx = d.cx * TS, cy = d.cy * TS;
+    const pd = dist(p.x, p.y, cx, cy);
+    if (!d.open && pd < TS * 2.6) openDoor(d);
+    if (d.open) {
+      let near = pd < TS * 3.4;
+      if (!near) {
+        for (const e of G.enemies) {
+          if (!e.dead && dist(e.x, e.y, cx, cy) < TS * 3) { near = true; break; }
+        }
+      }
+      if (near) d.timer = 0;
+      else {
+        d.timer += dt;
+        if (d.timer > 5) { d.open = false; }
+      }
+    }
+    d.anim += clamp((d.open ? 1 : 0) - d.anim, -dt * 5.5, dt * 5.5);
+  });
+}
+
+// ---------------- 射击 ----------------
+function startReload() {
+  const p = G.player;
+  if (p.reloading > 0 || p.mag >= MAG_SIZE || p.reserve <= 0) return;
+  p.reloading = RELOAD_TIME;
+  Sound.reload();
+}
+
+function fire() {
+  const p = G.player;
+  if (p.fireCd > 0 || p.reloading > 0) return;
+  if (p.mag <= 0) {
+    Sound.empty();
+    p.fireCd = 0.22;
+    startReload();
+    return;
+  }
+  p.mag--;
+  p.fireCd = FIRE_CD;
+  p.kick = 1;
+  G.shots++;
+  Sound.shot();
+  G.camera.shake = Math.min(8, G.camera.shake + 2.0);
+
+  const spread = 0.018 + (p.moving ? 0.016 : 0);
+  const a = p.angle + (Math.random() * 2 - 1) * spread;
+  const dx = Math.cos(a), dy = Math.sin(a);
+  const mx = p.x + dx * 16, my = p.y + dy * 16;
+  const range = 1300;
+
+  let bestT = range, target = null;
+  for (const e of G.enemies) {
+    if (e.dead) continue;
+    const t = rayCircle(mx, my, dx, dy, e.x, e.y, e.r + 1);
+    if (t > 0 && t < bestT) {
+      // 确认中间没有墙
+      const hx = mx + dx * t, hy = my + dy * t;
+      if (!firstSolidTile(mx, my, hx, hy)) { bestT = t; target = e; }
+    }
+  }
+  const wallT = rayCastSolid(mx, my, dx, dy, range);
+  let ex, ey, hitEnemy = null;
+  if (target && bestT < wallT) {
+    ex = mx + dx * bestT; ey = my + dy * bestT; hitEnemy = target;
+  } else {
+    bestT = wallT;
+    ex = mx + dx * bestT; ey = my + dy * bestT;
+  }
+  G.tracers.push({ x1: mx, y1: my, x2: ex, y2: ey, t: 0, life: 0.055 });
+  if (hitEnemy) {
+    G.hits++;
+    damageEnemy(hitEnemy, BULLET_DMG, a);
+    sparks(ex, ey, '#ffd2a0', 5);
+    p.hitmark = 0.12;
+    Sound.hitmark();
+  } else {
+    sparks(ex, ey, '#cfc7b6', 4);
+    addDecal(ex, ey, 2.4, 'spark', 0.8);
+  }
+  // 枪声开门 + 惊动
+  const pr = roomAtPoint(p.x, p.y);
+  if (pr) pr.doorIds.forEach(id => {
+    const d = doorGroups[id];
+    if (d && !d.open && dist(p.x, p.y, d.cx * TS, d.cy * TS) < 430) openDoor(d);
+  });
+  for (const e of G.enemies) {
+    if (e.dead) continue;
+    if (dist2(e.x, e.y, p.x, p.y) < 760 * 760) {
+      if (e.state === 'idle') {
+        e.state = 'suspicious'; e.searchT = 2.4;
+        e.lastX = p.x; e.lastY = p.y;
+      } else if (e.state === 'search') {
+        e.lastX = p.x; e.lastY = p.y;
+      }
+    }
+  }
+  // 弹壳
+  G.casings.push({
+    x: p.x + dx * 10, y: p.y + dy * 10,
+    vx: Math.cos(a - 1.9) * (50 + Math.random() * 50),
+    vy: Math.sin(a - 1.9) * (50 + Math.random() * 50),
+    z: 3, rot: Math.random() * TAU, vr: (Math.random() - 0.5) * 20,
+    t: 0, life: 0.6 + Math.random() * 0.3
+  });
+  if (p.mag === 0 && p.reserve > 0) setTimeout(() => { if (G && G.mode === 'playing') startReload(); }, 160);
+}
+
+function damageEnemy(e, dmg) {
+  if (e.dead) return;
+  e.hp -= dmg;
+  e.flash = 0.14;
+  if (e.state === 'idle' || e.state === 'suspicious') {
+    e.state = 'chase';
+    e.lastX = G.player.x; e.lastY = G.player.y; e.lostT = 1.2;
+  }
+  sparks(e.x, e.y, '#ffbf90', 4);
+  if (e.hp <= 0) {
+    e.dead = true; e.hp = 0; e.deadT = 0;
+    G.kills++;
+    Sound.kill();
+    sparks(e.x, e.y, '#b8231c', 16);
+    for (let i = 0; i < 4; i++) {
+      addDecal(e.x + (Math.random() * 28 - 14), e.y + (Math.random() * 28 - 14), 4 + Math.random() * 8, 'blood', 9);
+    }
+    G.camera.shake = Math.min(10, G.camera.shake + 2.5);
+    if (e.type === 'boss') {
+      G.bossDead = true;
+      G.camera.shake = 18;
+      G.floorsCleared = Math.min(MAX_FLOORS, G.floorsCleared + 1);
+      toast('第 ' + G.floor + ' 层 BOSS 已击杀（累计 ' + fmtFloors(G.floorsCleared) + ' 层）');
+      setTimeout(() => { if (G && G.mode === 'playing') openFloorClear(); }, 900);
+    }
+    const r = rooms[e.room];
+    if (r) {
+      r.alive = Math.max(0, r.alive - 1);
+      if (r.alive === 0 && !r.cleared) markRoomCleared(r);
+    }
+    if (e.type !== 'boss' && Math.random() < 0.42) {
+      G.pickups.push({
+        x: e.x, y: e.y, kind: Math.random() < 0.5 ? 'hp' : 'ammo',
+        bob: Math.random() * TAU, taken: false, drop: true
+      });
+    }
+  } else {
+    Sound.ehit();
+  }
+}
+function markRoomCleared(r) {
+  r.cleared = true;
+  G.roomsCleared++;
+  floats(r.cx * TS, r.cy * TS, '区域已清空', '#7ee08a', 1.6);
+  if (!r.isBoss && r.alive === 0 && G.roomsCleared >= rooms.length) return;
+}
+
+function hurtPlayer(dmg) {
+  const p = G.player;
+  if (p.invuln > 0 || G.mode !== 'playing') return;
+  p.hp -= dmg;
+  p.hurtFx = 0.32;
+  p.invuln = 0.16;
+  G.camera.shake = Math.min(15, G.camera.shake + 6);
+  Sound.playerHurt();
+  $('flash').style.opacity = '1';
+  clearTimeout(hurtPlayer._t);
+  hurtPlayer._t = setTimeout(() => { $('flash').style.opacity = '0'; }, 110);
+  sparks(p.x, p.y, '#ff8a6a', 8);
+  if (p.hp <= 0) { p.hp = 0; endRun('dead'); }
+}
+
+// ---------------- 粒子 / 特效 ----------------
+function sparks(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * TAU, sp = 40 + Math.random() * 200;
+    G.particles.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+      t: 0, life: 0.18 + Math.random() * 0.34, color, size: 1.2 + Math.random() * 2.2
+    });
+  }
+}
+function addDecal(x, y, r, kind, life) {
+  if (G.decals.length > 260) G.decals.shift();
+  G.decals.push({ x, y, r, kind, t: 0, life });
+}
+function floats(x, y, text, color, life) {
+  G.floats.push({ x, y, text, color, t: 0, life: life || 1.2 });
+}
+
+// ---------------- 玩家更新 ----------------
+function updatePlayer(dt) {
+  const p = G.player;
+  p.fireCd = Math.max(0, p.fireCd - dt);
+  p.invuln = Math.max(0, p.invuln - dt);
+  p.hurtFx = Math.max(0, p.hurtFx - dt);
+  p.kick = Math.max(0, p.kick - dt * 8);
+  p.hitmark = Math.max(0, p.hitmark - dt);
+
+  if (p.reloading > 0) {
+    p.reloading -= dt;
+    if (p.reloading <= 0) {
+      p.reloading = 0;
+      const need = MAG_SIZE - p.mag;
+      const take = Math.min(need, p.reserve);
+      p.mag += take; p.reserve -= take;
+    }
+  }
+
+  // 瞄准：鼠标世界坐标
+  if (G.pointer.inside) {
+    const wx = G.pointer.x + camX(), wy = G.pointer.y + camY();
+    p.angle = Math.atan2(wy - p.y, wx - p.x);
+  }
+
+  // 移动
+  let mx = 0, my = 0;
+  if (keys['w']) my -= 1;
+  if (keys['s']) my += 1;
+  if (keys['a']) mx -= 1;
+  if (keys['d']) mx += 1;
+  const moving = mx !== 0 || my !== 0;
+  p.moving = moving;
+  if (moving) {
+    const l = Math.hypot(mx, my);
+    mx /= l; my /= l;
+    moveEntity(p, mx * P_SPEED * dt, my * P_SPEED * dt, p.r);
+    p.step += P_SPEED * dt;
+  }
+
+  if (G.mouseDown) {
+    if (!p.reloading && p.mag > 0) fire();
+    else if (p.mag <= 0) fire(); // 空仓时会自动触发换弹
+  }
+
+  // 拾取
+  for (const pk of G.pickups) {
+    if (pk.taken) continue;
+    if (dist2(pk.x, pk.y, p.x, p.y) < (p.r + 13) * (p.r + 13)) {
+      if (pk.kind === 'hp') {
+        if (p.hp >= p.maxHp) continue;
+        p.hp = Math.min(p.maxHp, p.hp + 30);
+        floats(pk.x, pk.y - 12, '+30 HP', '#7ee08a', 1);
+      } else {
+        if (p.reserve >= 150) continue;
+        p.reserve = Math.min(150, p.reserve + 15);
+        floats(pk.x, pk.y - 12, '+15 弹药', '#ffb257', 1);
+      }
+      pk.taken = true;
+      Sound.pickup();
+      sparks(pk.x, pk.y, pk.kind === 'hp' ? '#7ee08a' : '#ffb257', 6);
+    }
+  }
+}
+
+// ---------------- 敌人更新 ----------------
+function updateEnemy(e, dt) {
+  if (e.dead) { e.deadT += dt; return; }
+  const p = G.player;
+  const dx = p.x - e.x, dy = p.y - e.y;
+  const dP = Math.hypot(dx, dy);
+  const canSee = dP < e.vision && Math.abs(angDiff(Math.atan2(dy, dx), e.aim)) < 1.35 &&
+    hasLOS(e.x, e.y, p.x, p.y);
+  const senseClose = dP < 60 && hasLOS(e.x, e.y, p.x, p.y);
+
+  // 不在玩家视野里、也没察觉到你：完全静止（不踱步、不转枪口）
+  if (!e.visible && (e.state === 'idle' || e.state === 'suspicious')) {
+    if (canSee || senseClose) {
+      e.state = 'chase'; e.alertT = 1.2;
+      if (e.type !== 'boss') floats(e.x, e.y - e.r - 8, '!', '#ff7a5c', 0.7);
+      e.repathT = 0; e.lostT = 1.0;
+      e.lastX = p.x; e.lastY = p.y;
+    }
+    return;
+  }
+
+  e.flash = Math.max(0, e.flash - dt * 5);
+  e.alertT = Math.max(0, e.alertT - dt);
+
+  if (canSee || senseClose) {
+    if (e.state !== 'chase') {
+      e.state = 'chase'; e.alertT = 1.2;
+      if (e.type !== 'boss') floats(e.x, e.y - e.r - 8, '!', '#ff7a5c', 0.7);
+      e.repathT = 0;
+    }
+    e.lastX = p.x; e.lastY = p.y; e.lostT = 1.0;
+  } else if (e.state === 'chase') {
+    e.lostT -= dt;
+    if (e.lostT <= 0) {
+      e.state = 'search'; e.searchT = 3;
+      e.path = null; e.repathT = 0;
+    }
+  }
+
+  // 靠近关闭的门就开
+  for (const d of doorGroups) {
+    if (d.open) continue;
+    if (dist2(e.x, e.y, d.cx * TS, d.cy * TS) < (TS * 1.8) * (TS * 1.8)) {
+      if (e.state !== 'idle' || d.anim > 0.3) openDoor(d);
+    }
+  }
+
+  if (e.state === 'chase') {
+    const toP = Math.atan2(dy, dx);
+    if (canSee) {
+      e.aim = lerpAngle(e.aim, toP, 0.35);
+      const desired = e.type === 'boss' ? 200 : 150;
+      if (dP > desired + 26) {
+        moveEntity(e, Math.cos(toP) * e.speed * dt, Math.sin(toP) * e.speed * dt, e.r);
+        e.step += e.speed * dt;
+      } else if (dP < desired - 44) {
+        moveEntity(e, -Math.cos(toP) * e.speed * 0.7 * dt, -Math.sin(toP) * e.speed * 0.7 * dt, e.r);
+      } else {
+        e.strafeT -= dt;
+        if (e.strafeT <= 0) { e.strafe *= -1; e.strafeT = 0.8 + Math.random() * 1.4; }
+        const sa = toP + Math.PI / 2 * e.strafe;
+        moveEntity(e, Math.cos(sa) * e.speed * 0.6 * dt, Math.sin(sa) * e.speed * 0.6 * dt, e.r);
+      }
+      // 开火：看不见你的时候不开枪（不空放、不隔着黑暗点名）
+      e.fireCd -= dt;
+      if (!e.visible) e.fireCd = Math.max(e.fireCd, 0.35);
+      if (e.fireCd <= 0 && dP < e.vision * 1.05 && e.visible === true) {
+        e.fireCd = e.cd * (0.88 + Math.random() * 0.3);
+        if (e.type === 'boss') {
+          if (Math.random() < 0.4) e.burst = 3;
+          else e.burst = 1;
+        }
+        enemyShoot(e, toP);
+      }
+    } else {
+      // 失去视线：追最后位置
+      e.repathT -= dt;
+      if (!e.path || e.repathT <= 0) {
+        const res = astar.find(Math.floor(e.x / TS), Math.floor(e.y / TS), Math.floor(p.x / TS), Math.floor(p.y / TS));
+        e.path = res ? res.path : null; e.pathI = 0; e.repathT = 0.5;
+      }
+      followPath(e, dt, 1);
+      if (e.path === null) { e.state = 'search'; e.searchT = 2.5; }
+    }
+  } else if (e.state === 'search') {
+    e.searchT -= dt;
+    e.aim += dt * 1.3 * e.strafe;
+    e.repathT -= dt;
+    if (!e.path || e.repathT <= 0) {
+      const res = astar.find(Math.floor(e.x / TS), Math.floor(e.y / TS), Math.floor(e.lastX / TS), Math.floor(e.lastY / TS));
+      e.path = res ? res.path : null; e.pathI = 0; e.repathT = 0.9;
+    }
+    if (e.path) followPath(e, dt, 0.75);
+    if (e.searchT <= 0) { e.state = 'idle'; e.path = null; }
+  } else if (e.state === 'suspicious') {
+    e.searchT -= dt;
+    e.aim += dt * 1.1;
+    if (e.searchT <= 0) e.state = 'idle';
+  } else {
+    // idle：小范围踱步
+    e.repathT -= dt;
+    if (!e.path || e.repathT <= 0) {
+      const r = rooms[e.room];
+      if (r) {
+        const spot = freeSpotIn(r, Math.random) || [Math.floor(e.x / TS), Math.floor(e.y / TS)];
+        const res = astar.find(Math.floor(e.x / TS), Math.floor(e.y / TS), Math.floor((e.x / TS)) , Math.floor(e.y / TS));
+        e.path = null;
+        e.repathT = 2 + Math.random() * 3;
+      }
+    }
+    // 原地缓慢转向，更像“在巡逻”
+    e.aim += dt * 0.35 * e.strafe;
+    if (Math.random() < dt * 0.25) e.strafe *= -1;
+  }
+}
+function followPath(e, dt, speedMul) {
+  if (!e.path || !e.path.length) return;
+  if (e.pathI >= e.path.length) { e.path = null; return; }
+  const node = e.path[e.pathI];
+  const tx = node.x * TS + TS / 2, ty = node.y * TS + TS / 2;
+  if (dist(e.x, e.y, tx, ty) < 9) { e.pathI++; return; }
+  const a = Math.atan2(ty - e.y, tx - e.x);
+  e.aim = lerpAngle(e.aim, a, 0.22);
+  moveEntity(e, Math.cos(a) * e.speed * speedMul * dt, Math.sin(a) * e.speed * speedMul * dt, e.r);
+  e.step += e.speed * dt;
+}
+function enemyShoot(e, angle) {
+  const p = G.player;
+  const dP = dist(e.x, e.y, p.x, p.y);
+  const acc = clamp(1 - dP / 1500, 0.5, 0.95);
+  const a = angle + (Math.random() * 2 - 1) * e.spread / acc;
+  const dx = Math.cos(a), dy = Math.sin(a);
+  const mx = e.x + dx * (e.r + 3), my = e.y + dy * (e.r + 3);
+  Sound.eshot();
+  const wallT = rayCastSolid(mx, my, dx, dy, 1000);
+  const pt = rayCircle(mx, my, dx, dy, p.x, p.y, p.r + 1);
+  let hit = false, end = wallT;
+  if (pt > 0 && pt < wallT && !firstSolidTile(mx, my, mx + dx * pt, my + dy * pt)) {
+    hit = true; end = pt;
+  }
+  // 看不见的敌人开枪不该暴露位置：轨迹和枪口火光只在其可见时绘制
+  if (e.visible) {
+    G.tracers.push({
+      x1: mx, y1: my, x2: mx + dx * end, y2: my + dy * end,
+      t: 0, life: 0.075, enemy: true
+    });
+    G.particles.push({ x: mx, y: my, vx: 0, vy: 0, t: 0, life: 0.09, color: '#ffd08a', size: 6, glow: true });
+  }
+  if (e.visible) {
+    Sound.eshot();
+  }
+  if (hit) {
+    hurtPlayer(e.dmg);
+    G.enemies.forEach(o => { if (!o.dead && o !== e && dist2(o.x, o.y, p.x, p.y) < 500 * 500 && o.state === 'idle') o.state = 'suspicious'; });
+  } else if (e.visible) {
+    sparks(mx + dx * wallT, my + dy * wallT, '#bdb6a4', 3);
+  }
+  // BOSS 三连发
+  if (e.burst > 1) {
+    e.burst--;
+    setTimeout(() => {
+      if (G && G.mode === 'playing' && !e.dead) enemyShoot(e, Math.atan2(G.player.y - e.y, G.player.x - e.x));
+    }, 120);
+  }
+}
+
+// ---------------- 更新循环 ----------------
+function camX() { return G.camera.x - VIEW.w / 2 + G.camera.sx; }
+function camY() { return G.camera.y - VIEW.h / 2 + G.camera.sy; }
+
+function update(dt) {
+  const p = G.player;
+  G.time += dt; G.frame++;
+  updatePlayer(dt);
+  updateDoors(dt);
+  for (const e of G.enemies) updateEnemy(e, dt);
+  updateFx(dt);
+  updateCamera(dt);
+  updateVision();
+  // 房间发现
+  const r = roomAtPoint(p.x, p.y);
+  if (r && !r.discovered) { r.discovered = true; }
+  updateHUD();
+}
+function updateFx(dt) {
+  G.particles = G.particles.filter(pt => {
+    pt.t += dt;
+    pt.x += pt.vx * dt; pt.y += pt.vy * dt;
+    pt.vx *= 0.92; pt.vy *= 0.92;
+    return pt.t < pt.life;
+  });
+  G.casings = G.casings.filter(c => {
+    c.t += dt;
+    c.x += c.vx * dt; c.y += c.vy * dt;
+    c.vx *= 0.88; c.vy *= 0.88;
+    c.z = Math.max(0, c.z - dt * 10);
+    c.rot += c.vr * dt;
+    return c.t < c.life;
+  });
+  G.tracers = G.tracers.filter(t => { t.t += dt; return t.t < t.life; });
+  G.floats = G.floats.filter(f => { f.t += dt; f.y -= 20 * dt; return f.t < f.life; });
+  G.decals.forEach(d => { d.t += dt; });
+  G.doorFx = G.doorFx.filter(f => { f.t += dt; return f.t < f.life; });
+  G.camera.shake = Math.max(0, G.camera.shake - dt * 24);
+}
+function updateCamera(dt) {
+  const p = G.player, c = G.camera;
+  c.x = lerp(c.x, p.x, Math.min(1, dt * 9));
+  c.y = lerp(c.y, p.y, Math.min(1, dt * 9));
+  c.sx = (Math.random() * 2 - 1) * c.shake;
+  c.sy = (Math.random() * 2 - 1) * c.shake;
+}
+
+// ---------------- 坐标工具 ----------------
+function roomAtPoint(px, py) {
+  const x = Math.floor(px / TS), y = Math.floor(py / TS);
+  if (!inMap(x, y)) return null;
+  const i = roomAt[tI(x, y)];
+  return (i >= 0 && i < rooms.length) ? rooms[i] : null;
+}
+// 墙 / 走廊格的主题来源：取最近的可走格所属房间
+function adjacentRoom(x, y) {
+  const cand = [[x, y + 1], [x, y - 1], [x + 1, y], [x - 1, y], [x + 1, y + 1], [x - 1, y - 1]];
+  for (const [nx, ny] of cand) {
+    if (!inMap(nx, ny)) continue;
+    const i = roomAt[tI(nx, ny)];
+    if (i >= 0 && i < rooms.length) return i;
+  }
+  return -1;
+}
+
+// ---------------- 渲染 ----------------
+function draw() {
+  const W = VIEW.w, H = VIEW.h;
+  ctx.fillStyle = '#07090c';
+  ctx.fillRect(0, 0, W, H);
+  if (!G) return;
+  const cx = camX(), cy = camY();
+  const t = G.time;
+
+  const x0 = Math.max(0, Math.floor(cx / TS) - 1);
+  const y0 = Math.max(0, Math.floor(cy / TS) - 1);
+  const x1 = Math.min(MAP_W - 1, Math.floor((cx + W) / TS) + 1);
+  const y1 = Math.min(MAP_H - 1, Math.floor((cy + H) / TS) + 1);
+
+  // 地面
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const tt = grid[tI(x, y)];
+      if (tt === 0) continue;
+      const sx = x * TS - cx, sy = y * TS - cy;
+      const g = roomAt[tI(x, y)];
+      const gUse = g >= 0 ? g : adjacentRoom(x, y);
+      const th = gUse >= 0 ? rooms[gUse].theme : null;
+      const base = th ? th.floor : [22, 24, 28];
+      const dim = g >= 0 ? 1 : 0.8;
+      const h = hash2(x, y);
+      const k = 0.88 + h * 0.24;
+      if (tt === 2) {
+        ctx.fillStyle = 'rgb(' + ((base[0] * 0.7 * dim) | 0) + ',' + ((base[1] * 0.7 * dim) | 0) + ',' + ((base[2] * 0.7 * dim) | 0) + ')';
+        ctx.fillRect(sx, sy, TS, TS);
+        continue;
+      }
+      if (tt === 3) {
+        ctx.fillStyle = 'rgb(' + ((base[0] * 0.86 * dim) | 0) + ',' + ((base[1] * 0.86 * dim) | 0) + ',' + ((base[2] * 0.86 * dim) | 0) + ')';
+        ctx.fillRect(sx, sy, TS, TS);
+        continue;
+      }
+      ctx.fillStyle = 'rgb(' + ((base[0] * k * dim) | 0) + ',' + ((base[1] * k * dim) | 0) + ',' + ((base[2] * k * dim) | 0) + ')';
+      ctx.fillRect(sx, sy, TS, TS);
+      if ((x + y) & 1) {
+        ctx.fillStyle = 'rgba(0,0,0,0.10)';
+        ctx.fillRect(sx, sy, TS, 1);
+        ctx.fillRect(sx, sy, 1, TS);
+      }
+      // 墙根阴影
+      if (solid(x, y - 1)) shade(sx, sy, TS, 10, 'top');
+      if (solid(x - 1, y)) shade(sx, sy, 8, TS, 'left');
+    }
+  }
+
+  // 墙
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      if (grid[tI(x, y)] !== 0) continue;
+      // 只画有地面对面/相邻的墙，减少远处纯黑块
+      const sx = x * TS - cx, sy = y * TS - cy;
+      const g = roomAt[tI(x, y)];
+      drawWall(sx, sy, x, y, g);
+    }
+  }
+
+  // 掩体
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      if (grid[tI(x, y)] !== 3) continue;
+      drawProp(x * TS - cx, y * TS - cy, x, y, roomAt[tI(x, y)]);
+    }
+  }
+
+  // 门
+  for (const d of doorGroups) {
+    if (d.cx * TS < cx - 80 || d.cx * TS > cx + W + 80) continue;
+    if (d.cy * TS < cy - 80 || d.cy * TS > cy + H + 80) continue;
+    drawDoor(d, cx, cy);
+  }
+
+  // 血迹 / 弹孔
+  for (const d of G.decals) {
+    if (d.x < cx - 40 || d.x > cx + W + 40 || d.y < cy - 40 || d.y > cy + H + 40) continue;
+    const a = clamp(1 - d.t / d.life, 0, 1);
+    if (a <= 0.02) continue;
+    ctx.fillStyle = d.kind === 'blood'
+      ? 'rgba(92,14,12,' + (a * 0.55).toFixed(3) + ')'
+      : 'rgba(190,180,160,' + (a * 0.35).toFixed(3) + ')';
+    ctx.beginPath();
+    ctx.arc(d.x - cx, d.y - cy, d.r, 0, TAU);
+    ctx.fill();
+  }
+
+  // 补给
+  for (const pk of G.pickups) {
+    if (pk.taken) continue;
+    if (pk.x < cx - 40 || pk.x > cx + W + 40 || pk.y < cy - 40 || pk.y > cy + H + 40) continue;
+    drawPickup(pk, cx, cy, t);
+  }
+
+  // 敌人（死的在下层）
+  for (const e of G.enemies) {
+    if (e.dead) drawEnemy(e, cx, cy, t);
+  }
+  for (const e of G.enemies) {
+    if (!e.dead) drawEnemy(e, cx, cy, t);
+  }
+
+  // 玩家
+  drawPlayer(cx, cy, t);
+
+  // 弹壳
+  for (const c of G.casings) {
+    const a = clamp(1 - c.t / c.life, 0, 1);
+    ctx.save();
+    ctx.translate(c.x - cx, c.y - cy - c.z);
+    ctx.rotate(c.rot);
+    ctx.fillStyle = 'rgba(214,186,120,' + a.toFixed(3) + ')';
+    ctx.fillRect(-2, -1, 4, 2);
+    ctx.restore();
+  }
+
+  // 弹道
+  for (const tr of G.tracers) {
+    const a = clamp(1 - tr.t / tr.life, 0, 1);
+    ctx.strokeStyle = tr.enemy ? 'rgba(255,130,80,' + a.toFixed(3) + ')' : 'rgba(255,232,176,' + a.toFixed(3) + ')';
+    ctx.lineWidth = tr.enemy ? 1.3 : 1.8;
+    ctx.beginPath();
+    ctx.moveTo(tr.x1 - cx, tr.y1 - cy);
+    ctx.lineTo(tr.x2 - cx, tr.y2 - cy);
+    ctx.stroke();
+  }
+
+  // 粒子
+  for (const pt of G.particles) {
+    const a = clamp(1 - pt.t / pt.life, 0, 1);
+    if (pt.glow) {
+      const gr = ctx.createRadialGradient(pt.x - cx, pt.y - cy, 0, pt.x - cx, pt.y - cy, pt.size * 3);
+      gr.addColorStop(0, 'rgba(255,224,160,' + a.toFixed(3) + ')');
+      gr.addColorStop(1, 'rgba(255,160,60,0)');
+      ctx.fillStyle = gr;
+      ctx.beginPath(); ctx.arc(pt.x - cx, pt.y - cy, pt.size * 3, 0, TAU); ctx.fill();
+    } else {
+      ctx.globalAlpha = a;
+      ctx.fillStyle = pt.color;
+      ctx.beginPath(); ctx.arc(pt.x - cx, pt.y - cy, pt.size * (0.4 + a * 0.6), 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // 开门特效
+  for (const f of G.doorFx) {
+    const a = clamp(1 - f.t / f.life, 0, 1);
+    ctx.strokeStyle = 'rgba(255,200,120,' + (a * 0.45).toFixed(3) + ')';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(f.x - cx, f.y - cy, 6 + (1 - a) * 30, 0, TAU); ctx.stroke();
+  }
+
+  // 飘字
+  ctx.textAlign = 'center';
+  for (const f of G.floats) {
+    const a = clamp(1 - f.t / f.life, 0, 1);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = f.color;
+    ctx.font = '600 12px "Courier New", monospace';
+    ctx.fillText(f.text, f.x - cx, f.y - cy);
+    ctx.globalAlpha = 1;
+  }
+
+  // 视野黑暗遮罩（锥外全黑，锥内随距离渐暗）
+  drawFOVMask(cx, cy);
+  drawCrosshair(cx, cy);
+  drawMinimap();
+}
+
+function shade(sx, sy, w, h, side) {
+  let g;
+  if (side === 'top') {
+    g = ctx.createLinearGradient(sx, sy, sx, sy + h);
+    g.addColorStop(0, 'rgba(0,0,0,0.5)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  } else {
+    g = ctx.createLinearGradient(sx, sy, sx + w, sy);
+    g.addColorStop(0, 'rgba(0,0,0,0.42)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  }
+  ctx.fillStyle = g;
+  ctx.fillRect(sx, sy, w, h);
+}
+
+function drawWall(sx, sy, x, y, g) {
+  // 墙自身不属于房间，取邻接地面的房间主题
+  if (g < 0) g = adjacentRoom(x, y);
+  const th = g >= 0 ? rooms[g].theme : null;
+  const base = th ? th.wall : [46, 50, 58];
+  const h = hash2(x * 7 + 1, y * 11 + 3);
+  const k = 0.88 + h * 0.26;
+  ctx.fillStyle = 'rgb(' + ((base[0] * k) | 0) + ',' + ((base[1] * k) | 0) + ',' + ((base[2] * k) | 0) + ')';
+  ctx.fillRect(sx, sy, TS, TS);
+  // 顶部亮边（上方是地面/空）
+  if (!solid(x, y - 1)) {
+    ctx.fillStyle = 'rgba(255,255,255,0.13)';
+    ctx.fillRect(sx, sy, TS, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillRect(sx, sy + 3, TS, 2);
+  }
+  // 底部阴影（下方是地面）
+  if (!solid(x, y + 1)) {
+    ctx.fillStyle = 'rgba(0,0,0,0.42)';
+    ctx.fillRect(sx, sy + TS - 5, TS, 5);
+  }
+  // 砖块拼缝
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(sx, sy + ((y & 1) ? TS * 0.5 : TS * 0.33), TS, 1);
+  ctx.fillRect(sx + ((x & 1) ? TS * 0.5 : TS * 0.75), sy, 1, TS);
+  ctx.strokeStyle = 'rgba(0,0,0,0.20)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(sx + 0.5, sy + 0.5, TS - 1, TS - 1);
+  if (h > 0.82) {
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.fillRect(sx + 4, sy + 6, 7, 2);
+  }
+}
+
+function drawProp(sx, sy, x, y, g) {
+  const th = g >= 0 ? rooms[g].themeKey : 'office';
+  const h = hash2(x * 3 + 7, y * 5 + 1);
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(sx + 2, sy + TS - 5, TS - 4, 4);
+  let body = '#3a3d44', edge = 'rgba(255,255,255,0.10)';
+  if (th === 'storage') body = '#4a4133';
+  else if (th === 'server') body = '#2f3d44';
+  else if (th === 'archive') body = '#463c50';
+  else if (th === 'medical') body = '#4a3c3d';
+  else if (th === 'cafeteria') body = '#4a4a38';
+  else if (th === 'boss') body = '#4b3336';
+  ctx.fillStyle = body;
+  ctx.fillRect(sx + 2, sy + 2, TS - 4, TS - 4);
+  ctx.fillStyle = edge;
+  ctx.fillRect(sx + 2, sy + 2, TS - 4, 3);
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(sx + 4, sy + 4); ctx.lineTo(sx + TS - 4, sy + TS - 4);
+  if (h > 0.4) { ctx.moveTo(sx + TS - 4, sy + 4); ctx.lineTo(sx + 4, sy + TS - 4); }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(sx + 2.5, sy + 2.5, TS - 5, TS - 5);
+}
+
+function drawDoor(d, cx, cy) {
+  const t0 = d.tiles[0], t1 = d.tiles[1];
+  const lx = Math.min(t0[0], t1[0]), ly = Math.min(t0[1], t1[1]);
+  const horiz = t0[0] !== t1[0];
+  const x = lx * TS - cx, y = ly * TS - cy;
+  const w = horiz ? TS * 2 : TS, h = horiz ? TS : TS * 2;
+  const a = d.anim;
+  const gcx = x + w / 2, gcy = y + h / 2;
+
+  // 门缝暖光：远处也能注意到“这里有入口”
+  const glow = ctx.createRadialGradient(gcx, gcy, 3, gcx, gcy, 52);
+  glow.addColorStop(0, 'rgba(255,196,96,0.20)');
+  glow.addColorStop(0.5, 'rgba(255,170,70,0.08)');
+  glow.addColorStop(1, 'rgba(255,150,50,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(gcx, gcy, 52, 0, TAU); ctx.fill();
+
+  // 门洞
+  ctx.fillStyle = '#06080b';
+  ctx.fillRect(x, y, w, h);
+
+  // 门板（向两侧收起）
+  if (horiz) {
+    const pw = (w / 2) * (1 - a);
+    if (pw > 0.6) {
+      for (const px of [x, x + w - pw]) {
+        ctx.fillStyle = '#3d4048';
+        ctx.fillRect(px, y, pw, h);
+        ctx.fillStyle = 'rgba(255,255,255,0.10)';
+        ctx.fillRect(px, y, pw, 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillRect(px, y + h - 3, pw, 3);
+      }
+    }
+  } else {
+    const ph = (h / 2) * (1 - a);
+    if (ph > 0.6) {
+      for (const py of [y, y + h - ph]) {
+        ctx.fillStyle = '#3d4048';
+        ctx.fillRect(x, py, w, ph);
+        ctx.fillStyle = 'rgba(255,255,255,0.10)';
+        ctx.fillRect(x, py, w, 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillRect(x + w - 3, py, 3, ph);
+      }
+    }
+  }
+
+  // 关闭时门缝亮线
+  if (a < 0.9) {
+    ctx.fillStyle = '#ff5a3c';
+    if (horiz) ctx.fillRect(x + w / 2 - 1, y + 2, 2, h - 4);
+    else ctx.fillRect(x + 2, y + h / 2 - 1, w - 4, 2);
+  }
+
+  // 危险条纹门框：黄黑斜纹，最显眼的部分
+  drawHazardFrame(x - 5, y - 5, w + 10, h + 10, 5, x - 1, y - 1, w + 2, h + 2);
+
+  // 四角高亮角标
+  ctx.strokeStyle = 'rgba(255,216,120,0.95)';
+  ctx.lineWidth = 2;
+  const bl = 7;
+  const corners = [
+    [x - 5, y - 5, 1, 1],
+    [x + w + 5, y - 5, -1, 1],
+    [x - 5, y + h + 5, 1, -1],
+    [x + w + 5, y + h + 5, -1, -1]
+  ];
+  for (const [ox, oy, sx, sy] of corners) {
+    ctx.beginPath();
+    ctx.moveTo(ox, oy + sy * bl);
+    ctx.lineTo(ox, oy);
+    ctx.lineTo(ox + sx * bl, oy);
+    ctx.stroke();
+  }
+
+  // 状态灯：关门红、开门绿，缓慢闪烁
+  const blink = 0.55 + Math.sin(G.time * 6) * 0.45;
+  const lamp = d.open
+    ? 'rgba(126,224,138,' + (0.55 + blink * 0.45).toFixed(3) + ')'
+    : 'rgba(255,110,70,' + (0.45 + blink * 0.45).toFixed(3) + ')';
+  const lamps = horiz
+    ? [[gcx, y - 8], [gcx, y + h + 8]]
+    : [[x - 8, gcy], [x + w + 8, gcy]];
+  for (const [lx2, ly2] of lamps) {
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.beginPath(); ctx.arc(lx2, ly2, 5, 0, TAU); ctx.fill();
+    ctx.fillStyle = lamp;
+    ctx.beginPath(); ctx.arc(lx2, ly2, 2.4, 0, TAU); ctx.fill();
+  }
+
+  // 玩家靠近提示
+  if (!d.open) {
+    const pd = dist(G.player.x, G.player.y, d.cx * TS, d.cy * TS);
+    if (pd < TS * 3) {
+      ctx.strokeStyle = 'rgba(255,178,87,' + (0.3 + Math.sin(G.time * 5) * 0.16).toFixed(3) + ')';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x - 6.5, y - 6.5, w + 13, h + 13);
+    }
+  }
+}
+
+function drawHazardFrame(ox, oy, ow, oh, t, ix, iy, iw, ih) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(ox, oy, ow, oh);
+  ctx.rect(ix, iy, iw, ih);
+  ctx.clip('evenodd');
+  ctx.fillStyle = '#e8b13a';
+  ctx.fillRect(ox, oy, ow, oh);
+  ctx.strokeStyle = 'rgba(18,14,6,0.92)';
+  ctx.lineWidth = Math.max(2, t * 0.95);
+  const step = t * 2.1;
+  ctx.beginPath();
+  for (let s = -oh; s < ow + oh; s += step) {
+    ctx.moveTo(ox + s, oy);
+    ctx.lineTo(ox + s + oh, oy + oh);
+  }
+  ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(ox + 0.5, oy + 0.5, ow - 1, oh - 1);
+}
+
+function drawPickup(pk, cx, cy, t) {
+  const x = pk.x - cx, y = pk.y - cy;
+  const bob = Math.sin(t * 3 + pk.bob) * 2.5;
+  if (pk.kind === 'hp') {
+    ctx.fillStyle = 'rgba(126,224,138,0.16)';
+    ctx.beginPath(); ctx.arc(x, y + bob, 13, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#e9f7ee';
+    ctx.fillRect(x - 7, y + bob - 2.5, 14, 5);
+    ctx.fillRect(x - 2.5, y + bob - 7, 5, 14);
+    ctx.fillStyle = '#6cd67a';
+    ctx.fillRect(x - 6, y + bob - 1.5, 12, 3);
+    ctx.fillRect(x - 1.5, y + bob - 6, 3, 12);
+  } else {
+    ctx.fillStyle = 'rgba(255,178,87,0.15)';
+    ctx.beginPath(); ctx.arc(x, y + bob, 13, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#3b3127';
+    ctx.fillRect(x - 8, y + bob - 5, 16, 10);
+    ctx.fillStyle = '#ffb257';
+    ctx.fillRect(x - 7, y + bob - 4, 14, 2);
+    ctx.fillRect(x - 7, y + bob + 2, 14, 2);
+    ctx.fillStyle = '#ffe0b0';
+    ctx.fillRect(x - 6, y + bob - 1, 5, 2);
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x - 9, y + bob - 9, 18, 18);
+}
+
+function drawEnemy(e, cx, cy, t) {
+  const x = e.x - cx, y = e.y - cy;
+  // 视野外：完全融入黑暗（死亡痕迹除外，它已经黑了）
+  if (!e.dead && !e.visible) return;
+  const dim = e.visible === 'dim';
+  if (e.dead) {
+    const a = clamp(1 - e.deadT / 1.6, 0, 1);
+    if (a <= 0) return;
+    ctx.globalAlpha = a * 0.8;
+    ctx.fillStyle = 'rgba(48,16,14,0.9)';
+    ctx.beginPath();
+    ctx.ellipse(x, y, e.r * 1.5, e.r * 0.9, e.aim, 0, TAU);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    return;
+  }
+  if (dim) ctx.globalAlpha = 0.22;
+  const chase = e.state === 'chase';
+  if (chase && !dim) {
+    const vr = e.vision * 0.7;
+    const gr = ctx.createRadialGradient(x, y, 6, x, y, vr);
+    gr.addColorStop(0, 'rgba(255,80,60,0.15)');
+    gr.addColorStop(1, 'rgba(255,80,60,0)');
+    ctx.fillStyle = gr;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.arc(x, y, vr, e.aim - 0.62, e.aim + 0.62);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.34)';
+  ctx.beginPath(); ctx.ellipse(x + 2, y + 5, e.r * 1.15, e.r * 0.6, 0, 0, TAU); ctx.fill();
+  const body = e.type === 'boss' ? '#c86b60' : e.type === 'heavy' ? '#8a79a0' : '#8d7f68';
+  if (chase) {
+    ctx.fillStyle = 'rgba(200,40,30,0.9)';
+    ctx.beginPath(); ctx.arc(x, y, e.r + 2.5, 0, TAU); ctx.fill();
+  }
+  ctx.fillStyle = e.flash > 0 ? '#ffffff' : body;
+  ctx.beginPath(); ctx.arc(x, y, e.r, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#1a1c20';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.save();
+  ctx.translate(x, y); ctx.rotate(e.aim);
+  ctx.fillStyle = '#1b1e24';
+  ctx.fillRect(e.r * 0.2, -2.2, e.r + 8, 4.4);
+  ctx.fillStyle = '#3a4048';
+  ctx.fillRect(e.r * 0.2, -2.2, e.r * 0.6, 1.6);
+  ctx.restore();
+  const hx = x + Math.cos(e.aim) * e.r * 0.62, hy = y + Math.sin(e.aim) * e.r * 0.62;
+  ctx.fillStyle = chase ? '#ff6a55' : (e.state === 'search' || e.state === 'suspicious' ? '#ffb257' : '#cfc7b0');
+  ctx.beginPath(); ctx.arc(hx, hy, Math.max(2, e.r * 0.26), 0, TAU); ctx.fill();
+  if (e.hp < e.maxHp && !dim) {
+    const w = e.r * 2.3;
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(x - w / 2, y - e.r - 11, w, 3);
+    ctx.fillStyle = e.type === 'boss' ? '#ff8a5c' : '#e0503e';
+    ctx.fillRect(x - w / 2, y - e.r - 11, w * (e.hp / e.maxHp), 3);
+  }
+  if (chase && !dim) {
+    ctx.fillStyle = 'rgba(255,90,70,' + (0.55 + Math.sin(t * 9) * 0.35).toFixed(3) + ')';
+    ctx.font = 'bold 13px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('!', x, y - e.r - 15);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawPlayer(cx, cy, t) {
+  const p = G.player;
+  const x = p.x - cx, y = p.y - cy;
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath(); ctx.ellipse(x + 2, y + 5, p.r * 1.15, p.r * 0.6, 0, 0, TAU); ctx.fill();
+  const hurt = p.invuln > 0 && Math.floor(t * 40) % 2 === 0;
+  ctx.fillStyle = hurt ? '#ffffff' : '#7cc0d8';
+  ctx.beginPath(); ctx.arc(x, y, p.r, 0, TAU); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.arc(x, y, p.r - 1, 0, TAU); ctx.stroke();
+  ctx.save();
+  ctx.translate(x, y); ctx.rotate(p.angle);
+  const kick = -p.kick * 2.2;
+  ctx.fillStyle = '#1b1e24';
+  ctx.fillRect(6 + kick, -2.5, 18, 5);
+  ctx.fillStyle = '#343a44';
+  ctx.fillRect(6 + kick, -2.5, 12, 2);
+  if (p.fireCd > FIRE_CD - 0.035) {
+    const gr = ctx.createRadialGradient(24 + kick, 0, 1, 24 + kick, 0, 16);
+    gr.addColorStop(0, 'rgba(255,242,196,0.95)');
+    gr.addColorStop(0.4, 'rgba(255,180,80,0.5)');
+    gr.addColorStop(1, 'rgba(255,120,20,0)');
+    ctx.fillStyle = gr;
+    ctx.beginPath(); ctx.arc(24 + kick, 0, 16, 0, TAU); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ---------------- 视野（120° 锥形 + 墙体遮挡） ----------------
+// 每帧从玩家朝锥形内打 FOV_SAMPLES 条射线，记录到墙的距离；
+// 视锥多边形 = 玩家 + 各射线端点，用于画面开洞和敌人可见性判断。
+function updateVision() {
+  const p = G.player;
+  const fov = G.fov;
+  const base = p.angle - FOV_HALF;
+  const step = (FOV_HALF * 2) / (FOV_SAMPLES - 1);
+  for (let i = 0; i < FOV_SAMPLES; i++) {
+    const a = base + step * i;
+    const dx = Math.cos(a), dy = Math.sin(a);
+    fov.dist[i] = rayCastSolid(p.x, p.y, dx, dy, FOV_RADIUS);
+  }
+  // 多边形（用于填充）
+  const poly = fov.poly;
+  poly.length = 0;
+  poly.push([p.x, p.y]);
+  for (let i = 0; i < FOV_SAMPLES; i++) {
+    const a = base + step * i;
+    const d = fov.dist[i] - 1.5;
+    poly.push([p.x + Math.cos(a) * d, p.y + Math.sin(a) * d]);
+  }
+  // 敌人是否可见：严格按 120° 锥形 + 墙体遮挡判断
+  for (const e of G.enemies) {
+    if (e.dead) { e.visible = true; continue; }
+    const ex = e.x - p.x, ey = e.y - p.y;
+    const d = Math.hypot(ex, ey);
+    const enemyAngle = Math.atan2(ey, ex);
+    const diff = Math.abs(angDiff(enemyAngle, p.angle));
+    if (diff <= FOV_HALF) {
+      // 在锥内：比较射线在该方向上的墙距（取相邻采样点最小值，避免墙角漏光）
+      const idx = Math.round(Math.abs(angDiff(enemyAngle, base)) / step);
+      let wallD = FOV_RADIUS;
+      for (let k = -1; k <= 1; k++) {
+        const j = idx + k;
+        if (j >= 0 && j < FOV_SAMPLES) wallD = Math.min(wallD, fov.dist[j]);
+      }
+      e.visible = d < wallD;
+    } else {
+      // 锥外：完全不可见，溶进黑暗
+      e.visible = false;
+    }
+  }
+  fov.updated = true;
+}
+
+// 黑暗遮罩：视线锥内为亮，锥外全黑
+function drawFOVMask(cx, cy) {
+  const p = G.player;
+  const fov = G.fov;
+  if (!fov || !fov.poly.length || !fov.updated) return;
+  const W = VIEW.w, H = VIEW.h;
+  const px = p.x - cx, py = p.y - cy;
+  const R = FOV_RADIUS;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  if (darkCv.width !== cv.width || darkCv.height !== cv.height) {
+    darkCv.width = cv.width; darkCv.height = cv.height;
+  }
+  dctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  dctx.globalCompositeOperation = 'source-over';
+  dctx.clearRect(0, 0, W, H);
+
+  // ---- 1) 黑雾：整屏黑，然后在锥形 + 贴身圆里挖洞 ----
+  dctx.fillStyle = 'rgba(2,3,5,0.93)';
+  dctx.fillRect(0, 0, W, H);
+
+  dctx.globalCompositeOperation = 'destination-out';
+  dctx.beginPath();
+  dctx.arc(px, py, FOV_NEAR_R, 0, TAU);
+  dctx.moveTo(px, py);
+  for (let i = 0; i < fov.poly.length; i++) {
+    dctx.lineTo(fov.poly[i][0] - cx, fov.poly[i][1] - cy);
+  }
+  dctx.closePath();
+  const hole = dctx.createRadialGradient(px, py, FOV_NEAR_R * 0.5, px, py, R);
+  hole.addColorStop(0, 'rgba(255,255,255,1)');
+  hole.addColorStop(0.55, 'rgba(255,255,255,1)');
+  hole.addColorStop(0.8, 'rgba(255,255,255,0.85)');
+  hole.addColorStop(0.94, 'rgba(255,255,255,0.35)');
+  hole.addColorStop(1, 'rgba(255,255,255,0)');
+  dctx.fillStyle = hole;
+  dctx.fill();
+
+  // ---- 2) 锥内轻暖光，让「被照亮」的感觉更明确 ----
+  dctx.globalCompositeOperation = 'lighter';
+  dctx.beginPath();
+  dctx.arc(px, py, FOV_NEAR_R, 0, TAU);
+  dctx.moveTo(px, py);
+  for (let i = 0; i < fov.poly.length; i++) {
+    dctx.lineTo(fov.poly[i][0] - cx, fov.poly[i][1] - cy);
+  }
+  dctx.closePath();
+  const tint = dctx.createRadialGradient(px, py, FOV_NEAR_R, px, py, R);
+  tint.addColorStop(0, 'rgba(120,140,150,0.20)');
+  tint.addColorStop(0.55, 'rgba(90,108,120,0.15)');
+  tint.addColorStop(0.85, 'rgba(50,62,72,0.06)');
+  tint.addColorStop(1, 'rgba(0,0,0,0)');
+  dctx.fillStyle = tint;
+  dctx.fill();
+
+  // ---- 3) 把雾层叠到主画布 ----
+  ctx.save();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.drawImage(darkCv, 0, 0, W, H);
+  ctx.restore();
+
+  // ---- 4) 视野边界一道很淡的冷光，便于判断视野边缘 ----
+  ctx.save();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+  for (let i = 0; i < fov.poly.length; i++) {
+    ctx.lineTo(fov.poly[i][0] - cx, fov.poly[i][1] - cy);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(110,150,180,0.09)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+
+  if (p.hurtFx > 0) {
+    const a = clamp(p.hurtFx / 0.32, 0, 1);
+    const hg = ctx.createRadialGradient(W / 2, H / 2, H * 0.2, W / 2, H / 2, H * 0.8);
+    hg.addColorStop(0, 'rgba(170,10,0,0)');
+    hg.addColorStop(1, 'rgba(170,10,0,' + (a * 0.4).toFixed(3) + ')');
+    ctx.fillStyle = hg;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+function drawVignette(W, H, cx, cy) {
+  const p = G.player;
+  const px = p.x - cx, py = p.y - cy;
+  const R = Math.hypot(W, H);           // 屏幕空间半径（不是世界半径）
+  const g = ctx.createRadialGradient(px, py, R * 0.30, px, py, R * 0.78);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
+  g.addColorStop(0.65, 'rgba(4,5,8,0.14)');
+  g.addColorStop(1, 'rgba(3,4,6,0.42)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawCrosshair(cx, cy) {
+  const p = G.player;
+  if (!G.pointer.inside) return;
+  let x = G.pointer.x, y = G.pointer.y;
+  const spread = 4 + (p.moving ? 4 : 0) + p.kick * 7;
+  ctx.strokeStyle = p.hitmark > 0 ? 'rgba(255,90,70,0.95)' : 'rgba(255,240,210,0.85)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x - spread - 5, y); ctx.lineTo(x - spread, y);
+  ctx.moveTo(x + spread, y); ctx.lineTo(x + spread + 5, y);
+  ctx.moveTo(x, y - spread - 5); ctx.lineTo(x, y - spread);
+  ctx.moveTo(x, y + spread); ctx.lineTo(x, y + spread + 5);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,178,87,0.9)';
+  ctx.beginPath(); ctx.arc(x, y, 1.4, 0, TAU); ctx.fill();
+}
+
+function drawMinimap() {
+  const W = VIEW.w;
+  const mw = 196, mh = 172;
+  const mx = W - mw - 20, my = 122;
+  const s = Math.min(mw / MAP_W, mh / MAP_H);
+  ctx.save();
+  ctx.fillStyle = 'rgba(8,10,14,0.74)';
+  ctx.fillRect(mx - 7, my - 7, mw + 14, mh + 14);
+  ctx.strokeStyle = 'rgba(255,255,255,0.11)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(mx - 7, my - 7, mw + 14, mh + 14);
+
+  // 走廊
+  ctx.fillStyle = 'rgba(255,255,255,0.07)';
+  ctx.fillRect(mx, my, mw, mh);
+
+  for (const r of rooms) {
+    const rx = mx + r.x * s, ry = my + r.y * s, rw = r.w * s, rh = r.h * s;
+    const cur = roomAtPoint(G.player.x, G.player.y) === r;
+    if (r.isBoss && !r.discovered && !cur) {
+      // BOSS 房位置始终可见：目标
+      ctx.fillStyle = 'rgba(255,80,70,0.14)';
+      ctx.fillRect(rx, ry, rw, rh);
+      ctx.strokeStyle = 'rgba(255,80,70,0.5)';
+      ctx.setLineDash([2, 2]);
+      ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1);
+      ctx.setLineDash([]);
+    } else if (r.cleared) {
+      ctx.fillStyle = 'rgba(126,224,138,0.20)';
+      ctx.fillRect(rx, ry, rw, rh);
+      ctx.strokeStyle = 'rgba(126,224,138,0.65)';
+      ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1);
+    } else if (cur) {
+      ctx.fillStyle = 'rgba(255,178,87,0.24)';
+      ctx.fillRect(rx, ry, rw, rh);
+      ctx.strokeStyle = 'rgba(255,178,87,0.9)';
+      ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1);
+    } else if (r.discovered) {
+      ctx.fillStyle = 'rgba(255,255,255,0.10)';
+      ctx.fillRect(rx, ry, rw, rh);
+      ctx.strokeStyle = 'rgba(255,255,255,0.26)';
+      ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1);
+    }
+    if (r.discovered || cur || r.isBoss) {
+      ctx.fillStyle = r.cleared ? 'rgba(126,224,138,0.9)' : 'rgba(255,255,255,0.55)';
+      ctx.font = 'bold 7px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(r.isBoss ? '★' : r.id, rx + 1.5, ry + 7.5);
+    }
+  }
+
+  // 门（琥珀色小点，便于找入口）
+  ctx.fillStyle = 'rgba(255,190,90,0.8)';
+  for (const d of doorGroups) {
+    ctx.fillRect(mx + d.cx * s - 1, my + d.cy * s - 1, 2, 2);
+  }
+
+  // 敌人点（已发现/正在交火）
+  for (const e of G.enemies) {
+    if (e.dead) continue;
+    const r = rooms[e.room];
+    if (!r) continue;
+    const visible = e.state === 'chase' || (r.discovered && e.state !== 'idle');
+    if (!visible) continue;
+    ctx.fillStyle = e.state === 'chase' ? 'rgba(255,80,60,0.95)' : 'rgba(255,150,90,0.75)';
+    ctx.fillRect(mx + (e.x / TS) * s - 1.5, my + (e.y / TS) * s - 1.5, 3, 3);
+  }
+
+  // 玩家
+  const px = mx + (G.player.x / TS) * s, py = my + (G.player.y / TS) * s;
+  ctx.strokeStyle = 'rgba(143,208,232,0.7)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+  ctx.lineTo(px + Math.cos(G.player.angle) * 8, py + Math.sin(G.player.angle) * 8);
+  ctx.stroke();
+  ctx.fillStyle = '#8fd0e8';
+  ctx.beginPath(); ctx.arc(px, py, 2.3, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+// ---------------- HUD ----------------
+function updateHUD() {
+  const p = G.player;
+  const pct = clamp(p.hp / p.maxHp, 0, 1);
+  const f = $('hpFill');
+  f.style.width = (pct * 100).toFixed(1) + '%';
+  f.classList.toggle('low', pct < 0.3);
+  $('hpTxt').textContent = Math.ceil(p.hp);
+  $('ammoTxt').textContent = p.mag + ' / ' + p.reserve;
+  $('reloadTxt').textContent = p.reloading > 0 ? '换弹…' : '';
+  $('floorTxt').textContent = '第 ' + G.floor + ' 层 · 累计 ' + fmtFloors(G.floorsCleared) + ' 层';
+  const r = roomAtPoint(p.x, p.y);
+  if (r) {
+    $('roomTxt').textContent = (r.isBoss ? '★ ' : '') + r.letter + ' · ' + r.name + (r.cleared ? ' · 已清' : '');
+  } else {
+    $('roomTxt').textContent = '走廊';
+  }
+  let alive = 0;
+  for (const e of G.enemies) if (!e.dead) alive++;
+  $('aliveTxt').textContent = alive;
+  $('progTxt').textContent = G.roomsCleared + ' / ' + rooms.length + ' 房间已清';
+}
+
+// ---------------- 主循环 ----------------
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  VIEW.w = window.innerWidth;
+  VIEW.h = window.innerHeight;
+  cv.width = Math.floor(VIEW.w * dpr);
+  cv.height = Math.floor(VIEW.h * dpr);
+  cv.style.width = VIEW.w + 'px';
+  cv.style.height = VIEW.h + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', resize);
+
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (!lastNow) lastNow = now;
+  let dt = (now - lastNow) / 1000;
+  lastNow = now;
+  if (dt > 0.1) dt = 0.1;
+
+  if (G && G.mode === 'playing') {
+    simAcc += dt;
+    // 卡顿时限制追帧量，避免模拟越跑越快
+    if (simAcc > 0.25) simAcc = 0.25;
+    let guard = 0;
+    while (simAcc >= STEPS_PER_FRAME && guard++ < 12) {
+      update(STEPS_PER_FRAME);
+      simAcc -= STEPS_PER_FRAME;
+    }
+  } else {
+    simAcc = 0;
+    if (G && G.mode === 'menu') {
+      updateFx(dt * 0.35);
+      updateCamera(dt);
+      updateVision();
+    }
+  }
+  draw();
+}
+
+// ---------------- 启动 ----------------
+resize();
+G = newGame();
+spawnLevel((Math.random() * 1e9) | 0);
+refreshNameUI();
+renderBoard();
+showOverlay('startCard');
+requestAnimationFrame(loop);
+
+// 调试 / 验证钩子
+window.__CBQ = {
+  get rooms() { return rooms; },
+  get doors() { return doorGroups; },
+  get grid() { return grid; },
+  G: () => G,
+  spawnLevel,
+  tile, solid,
+  roomAtPoint,
+  // 调试：把玩家放到某个可走格并把相机瞬移过去
+  teleport(tx, ty, snapCam) {
+    const p = G.player;
+    if (!walkable(tx, ty)) return false;
+    p.x = tx * TS + TS / 2; p.y = ty * TS + TS / 2;
+    if (snapCam !== false) { G.camera.x = p.x; G.camera.y = p.y; G.camera.sx = 0; G.camera.sy = 0; }
+    return true;
+  },
+  // 调试：把玩家放到指定敌人附近（自动找可走格）
+  nearEnemy(e, distTiles) {
+    if (!e) return false;
+    const steps = Math.round(distTiles || 5);
+    for (let r = 1; r <= steps + 3; r++) {
+      for (let a = 0; a < 16; a++) {
+        const ang = a / 16 * TAU;
+        const tx = Math.floor(e.x / TS + Math.cos(ang) * r);
+        const ty = Math.floor(e.y / TS + Math.sin(ang) * r);
+        if (walkable(tx, ty) && !circleHitsWall(tx * TS + TS / 2, ty * TS + TS / 2, G.player.r)) {
+          return this.teleport(tx, ty);
+        }
+      }
+    }
+    return false;
+  },
+  cam() { return { x: G.camera.x, y: G.camera.y, cx: camX(), cy: camY() }; },
+  path(fromX, fromY, toX, toY) {
+    const r = astar.find(fromX, fromY, toX, toY);
+    return r ? { len: r.len, path: r.path } : null;
+  },
+  // 检查所有房间是否从入口可达（门都当可通行）
+  validate() {    const p = G.player;
+    const sx = Math.floor(p.x / TS), sy = Math.floor(p.y / TS);
+    const res = [];
+    rooms.forEach(r => {
+      // 找房间中心附近的可走格
+      let target = null;
+      for (let rad = 0; rad < 7 && !target; rad++) {
+        for (let oy = -rad; oy <= rad && !target; oy++) {
+          for (let ox = -rad; ox <= rad && !target; ox++) {
+            const x = Math.floor(r.cx) + ox, y = Math.floor(r.cy) + oy;
+            if (walkablePath(x, y)) target = [x, y];
+          }
+        }
+      }
+      if (!target) { res.push({ room: r.letter, ok: ('no floor') }); return; }
+      const path = astar.find(sx, sy, target[0], target[1]);
+      res.push({ room: r.letter, boss: r.isBoss, ok: !!path, len: path ? path.len : -1 });
+    });
+    return res;
+  }
+};
+</script>
+</body>
+</html>
