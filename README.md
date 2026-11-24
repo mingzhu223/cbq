@@ -1,5 +1,7 @@
 # CBQ · 2D 随机室内清除 V1
 
+**在线玩：** https://mingzhu223.github.io/cbq/
+
 单文件网页小游戏。双击 `index.html` 就能玩，不装任何东西、不联网。
 
 ## 怎么玩
