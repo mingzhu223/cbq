@@ -116,16 +116,17 @@ button.primary:hover{background:#ffc47d}
     <div class="room" id="roomTxt">—</div>
     <div class="big"><span id="aliveTxt">0</span><small> 目标</small></div>
     <div id="progTxt">0 / 0 房间已清</div>
+    <div id="bossLockTxt" style="color:var(--red);font-size:10.5px;letter-spacing:.06em"></div>
   </div>
   <div class="hud-bl">
     <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动 &nbsp; 鼠标 瞄准 &nbsp; 左键 射击<br>
-    <kbd>R</kbd> 换弹 &nbsp; <kbd>ESC</kbd>/<kbd>P</kbd> 暂停 &nbsp; <kbd>Q</kbd> 退出
+    <kbd>R</kbd> 换弹 &nbsp; <kbd>H</kbd> 脱离卡死 &nbsp; <kbd>ESC</kbd>/<kbd>P</kbd> 暂停 &nbsp; <kbd>Q</kbd> 退出
   </div>
 </div>
 
 <div id="overlay">
   <div class="card" id="startCard">
-    <div class="tag">2D TACTICAL CQB · V2</div>
+    <div class="tag">2D TACTICAL CQB · V2.1</div>
     <h1>CBQ<span>室内清除</span></h1>
     <div class="sub">
       每局随机生成一片室内楼层：小房间随机拼合、走廊随机连通，<br>
@@ -177,9 +178,10 @@ button.primary:hover{background:#ffc47d}
     <div class="sub">
       · <b>武器</b>：开局选步枪（15 发、精准）或轻机枪（150 发、压制但散布大）。<br>
       · <b>小隔间</b>：每个房间被薄墙隔成 4 个半封闭小隔间，敌人只会在这些小隔间里。<br>
-      · <b>门锁</b>：当前房间没清空时，它的所有门锁死（红色挂锁）；清空后自动解锁。<br>
+      · <b>门锁</b>：当前房间没清空时，它的所有门锁死（红色挂锁）；清空后自动解锁。<b>BOSS 门要全图其他房间都清空才开</b>。<br>
       · <b>增援</b>：从第 2 层开始，随机房间可能藏一支三人小队——没有提示，会保持队形推进，在黑暗中会慢慢回到默认站位。<br>
-      · <b>视野</b>：120° 锥形，锥外全黑；<b>已经清空的房间会完全照亮</b>。视野外和黑暗里的敌人不显示。<br>
+      · <b>视野</b>：120° 锥形，锥外全黑；<b>已经清空的房间和门口附近的走廊会完全照亮</b>。视野外和黑暗里的敌人不显示。<br>
+      · <b>卡死救援</b>：卡进墙里 0.3 秒会自动脱出；也可以按 <b>H</b>（或暂停菜单里的按钮）手动脱离。<br>
       · <b>黑暗规则</b>：没察觉你的敌人待在黑暗里就完全静止；你已经暴露的位置会招来追兵，但他们看不见你时不开枪。<br>
       · <b>层数</b>：打倒 1 个 BOSS 算通过 1 层，每层换新地图、敌人更强。死在半路本局结束。<br>
       · <b>补给</b>：医疗包 +30 血，弹药箱按武器补；敌人也会掉。每通过一层补一点血量与弹药。<br>
@@ -194,6 +196,7 @@ button.primary:hover{background:#ffc47d}
     <div class="sub" id="pauseSub">已暂停。</div>
     <div class="btns">
       <button class="primary" id="btnResume">继续（ESC）</button>
+      <button id="btnUnstuck">脱离卡死（H）</button>
       <button id="btnQuit">退出到标题（Q）</button>
     </div>
   </div>
@@ -451,7 +454,7 @@ function newGame() {
     camera: { x: 0, y: 0, sx: 0, sy: 0, shake: 0 },
     player: null,
     enemies: [], pickups: [], particles: [], tracers: [], casings: [], decals: [], floats: [], doorFx: [],
-    squads: [],
+    squads: [], litCorridors: new Set(),
     pointer: { x: 0, y: 0, inside: false, screenX: 0, screenY: 0 },
     keys: {}, mouseDown: false,
     bossDead: false, bossRoom: -1,
@@ -548,6 +551,27 @@ function genLevel(seed) {
   }
   let bossNode = startNode;
   nodes.forEach(n => { if (n.dist > bossNode.dist) bossNode = n; });
+
+  // BOSS 房必须是死胡同：否则“全清才开 BOSS 门”会锁死 BOSS 房后面的房间
+  if (bossNode !== startNode) {
+    const bossKey = bossNode.cx + ',' + bossNode.cy;
+    let keep = null;
+    for (const k of bossNode.links) {
+      const nb = byKey.get(k);
+      if (!nb) continue;
+      if (!keep || nb.dist < keep.dist) keep = nb;
+    }
+    if (keep) {
+      // 先把所有节点指向 BOSS 的连接删掉，只保留 keep 这一条
+      for (const n of nodes) {
+        if (n === bossNode) continue;
+        n.links = n.links.filter(k => k !== bossKey);
+      }
+      const keepKey = keep.cx + ',' + keep.cy;
+      bossNode.links = [keepKey];
+      keep.links.push(bossKey);
+    }
+  }
 
   // ---- 创建房间 ----
   const themes = THEME_KEYS.slice();
@@ -971,6 +995,37 @@ function moveEntity(e, dx, dy, rad) {
     }
   }
 }
+
+// 卡死救援：在附近找最近的不碰撞点
+function findFreeSpot(x, y, rad, maxR) {
+  if (!circleHitsWall(x, y, rad)) return [x, y];
+  for (let r = 4; r <= maxR; r += 4) {
+    const n = Math.max(12, Math.ceil(r / 3));
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * TAU;
+      const nx = x + Math.cos(a) * r, ny = y + Math.sin(a) * r;
+      if (!circleHitsWall(nx, ny, rad)) return [nx, ny];
+    }
+  }
+  return null;
+}
+function unstuckPlayer(automatic) {
+  if (!G || !G.player) return false;
+  const p = G.player;
+  let spot = findFreeSpot(p.x, p.y, p.r, TS * 6);
+  if (!spot) {
+    // 兜底：当前房间中心 / 最近的房间中心
+    const r = roomAtPoint(p.x, p.y) || rooms.find(rr => !rr.isBoss) || rooms[0];
+    if (r) spot = findFreeSpot(r.cx * TS, r.cy * TS, p.r, TS * 6);
+  }
+  if (!spot) return false;
+  p.x = spot[0]; p.y = spot[1];
+  p.stuckT = 0;
+  G.camera.x = p.x; G.camera.y = p.y;
+  p.invuln = Math.max(p.invuln, 0.6);
+  if (!automatic) toast('已脱离卡死');
+  return true;
+}
 function hasLOS(ax, ay, bx, by) {
   const d = dist(ax, ay, bx, by);
   if (d < 2) return true;
@@ -1127,7 +1182,7 @@ function makePlayer(tx, ty) {
     reserveMax: W.reserveMax, ammoPickup: W.ammoPickup,
     reloadTime: W.reload, reloading: 0, fireCd: 0,
     dmg: W.dmg, fireRate: W.cd, spread: W.spread, moveSpread: W.moveSpread, kickAmt: W.kick,
-    invuln: 0, hurtFx: 0, kick: 0, step: 0, moving: false, hitmark: 0
+    invuln: 0, hurtFx: 0, kick: 0, step: 0, moving: false, hitmark: 0, stuckT: 0
   };
 }
 const ENEMY_TYPES = {
@@ -1201,7 +1256,7 @@ function spawnLevel(seed, opts) {
   G.player = p;
   G.enemies = []; G.pickups = []; G.particles = []; G.tracers = [];
   G.casings = []; G.decals = []; G.floats = []; G.doorFx = [];
-  G.squads = [];
+  G.squads = []; G.litCorridors = new Set();
   if (!carry) { G.kills = 0; G.shots = 0; G.hits = 0; G.time = 0; }
   G.roomsCleared = 0;
   G.bossDead = false; G.bossRoom = rooms.findIndex(r => r.isBoss);
@@ -1430,6 +1485,7 @@ window.addEventListener('keydown', e => {
   }
   if (G.mode === 'playing') {
     if (k === 'r') startReload();
+    if (k === 'h') { unstuckPlayer(false); return; }
     if (k === 'w' || k === 'a' || k === 's' || k === 'd') keys[k] = true;
   }
 });
@@ -1624,6 +1680,7 @@ $('btnStart').onclick = startRun;
 $('btnHow').onclick = () => showOverlay('howCard');
 $('btnBack').onclick = () => { refreshNameUI(); refreshWeaponUI(); showOverlay('startCard'); };
 $('btnResume').onclick = resumeGame;
+$('btnUnstuck').onclick = () => { unstuckPlayer(false); resumeGame(); };
 $('btnQuit').onclick = quitToTitle;
 $('btnAgain').onclick = startRun;
 $('btnToTitle').onclick = () => { refreshNameUI(); refreshWeaponUI(); showOverlay('startCard'); };
@@ -1656,9 +1713,15 @@ $('nameInput').addEventListener('keydown', e => {
 });
 
 // ---------------- 门 ----------------
-// 玩家所在房间没清空时，这个房间的门全部锁死
+// 玩家所在房间没清空时，这个房间的门全部锁死；BOSS 门要全图清空才开
+function bossDoorUnlocked() {
+  return rooms.every(r => r.isBoss || r.cleared);
+}
 function doorLocked(d) {
   if (!G || !G.player) return false;
+  const a = rooms[d.a], b = rooms[d.b];
+  const leadsBoss = !!(a && a.isBoss) || !!(b && b.isBoss);
+  if (leadsBoss && !bossDoorUnlocked()) return true;
   const pr = roomAtPoint(G.player.x, G.player.y);
   if (!pr || pr.cleared) return false;
   return d.a === pr.idx || d.b === pr.idx;
@@ -1680,6 +1743,16 @@ function openDoor(d) {
     }
   });
 }
+function doorOverlapsPlayer(d) {
+  if (!G || !G.player) return false;
+  const p = G.player;
+  for (const t of d.tiles) {
+    const rx = t[0] * TS, ry = t[1] * TS;
+    const nx = clamp(p.x, rx, rx + TS), ny = clamp(p.y, ry, ry + TS);
+    if (dist2(p.x, p.y, nx, ny) < (p.r + 3) * (p.r + 3)) return true;
+  }
+  return false;
+}
 function updateDoors(dt) {
   const p = G.player;
   doorGroups.forEach(d => {
@@ -1687,8 +1760,8 @@ function updateDoors(dt) {
     const pd = dist(p.x, p.y, cx, cy);
     const locked = doorLocked(d);
     if (!locked && !d.open && pd < TS * 2.6) openDoor(d);
-    // 锁死的房间：已经开的门会在身后慢慢关上
-    if (locked && d.open && pd > TS * 1.2) {
+    // 锁死的房间：已经开的门会在身后慢慢关上（别夹住玩家）
+    if (locked && d.open && pd > TS * 2 && !doorOverlapsPlayer(d)) {
       d.open = false; d.timer = 0;
       Sound.door();
     }
@@ -1702,7 +1775,7 @@ function updateDoors(dt) {
       if (near) d.timer = 0;
       else {
         d.timer += dt;
-        if (d.timer > 5) { d.open = false; }
+        if (d.timer > 5 && !doorOverlapsPlayer(d)) { d.open = false; }
       }
     }
     d.anim += clamp((d.open ? 1 : 0) - d.anim, -dt * 5.5, dt * 5.5);
@@ -1841,7 +1914,43 @@ function markRoomCleared(r) {
   r.cleared = true;
   G.roomsCleared++;
   floats(r.cx * TS, r.cy * TS, '区域已清空', '#7ee08a', 1.6);
+  lightCorridorsAround(r);
   if (!r.isBoss && r.alive === 0 && G.roomsCleared >= rooms.length) return;
+}
+// 清空房间后，门口附近的走廊也点亮（BFS 5 格）
+function lightCorridorsAround(r) {
+  const q = [];
+  const seen = new Set();
+  for (const id of (r.doorIds || [])) {
+    const d = doorGroups[id];
+    if (!d) continue;
+    for (const t of d.tiles) {
+      G.litCorridors.add(t[1] * MAP_W + t[0]);
+      for (const [dx, dy] of DIRS) {
+        const nx = t[0] + dx, ny = t[1] + dy;
+        if (!inMap(nx, ny)) continue;
+        if (roomAt[tI(nx, ny)] >= 0) continue;
+        const tt = grid[tI(nx, ny)];
+        if (tt === 1 || tt === 2) q.push([nx, ny, 0]);
+      }
+    }
+  }
+  while (q.length) {
+    const [x, y, d] = q.shift();
+    const k = y * MAP_W + x;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    if (d > 5) continue;
+    G.litCorridors.add(k);
+    if (d === 5) continue;
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy;
+      if (!inMap(nx, ny)) continue;
+      if (roomAt[tI(nx, ny)] >= 0) continue;
+      const tt = grid[tI(nx, ny)];
+      if (tt === 1 || tt === 2) q.push([nx, ny, d + 1]);
+    }
+  }
 }
 
 function hurtPlayer(dmg) {
@@ -1915,6 +2024,14 @@ function updatePlayer(dt) {
     mx /= l; my /= l;
     moveEntity(p, mx * P_SPEED * dt, my * P_SPEED * dt, p.r);
     p.step += P_SPEED * dt;
+  }
+
+  // 卡进实心格超过 0.3 秒就自动脱离
+  if (circleHitsWall(p.x, p.y, p.r)) {
+    p.stuckT += dt;
+    if (p.stuckT > 0.3) unstuckPlayer(true);
+  } else {
+    p.stuckT = 0;
   }
 
   if (G.mouseDown) {
@@ -2851,6 +2968,14 @@ function drawFOVMask(cx, cy) {
     dctx.fillRect(r.x * TS - cx, r.y * TS - cy, r.w * TS, r.h * TS);
   }
 
+  // ---- 1.6) 清空房间周边的走廊也点亮 ----
+  if (G.litCorridors && G.litCorridors.size) {
+    for (const k of G.litCorridors) {
+      const tx2 = k % MAP_W, ty2 = (k / MAP_W) | 0;
+      dctx.fillRect(tx2 * TS - cx, ty2 * TS - cy, TS, TS);
+    }
+  }
+
   // ---- 2) 锥内轻暖光，让「被照亮」的感觉更明确 ----
   dctx.globalCompositeOperation = 'lighter';
   dctx.beginPath();
@@ -2889,6 +3014,14 @@ function drawFOVMask(cx, cy) {
     lg.addColorStop(1, 'rgba(40,50,60,0.02)');
     ctx.fillStyle = lg;
     ctx.fillRect(rx, ry, rw, rh);
+  }
+  // 已清房间周边的走廊也补一点亮度
+  if (G.litCorridors && G.litCorridors.size) {
+    ctx.fillStyle = 'rgba(70,84,96,0.07)';
+    for (const k of G.litCorridors) {
+      const tx2 = k % MAP_W, ty2 = (k / MAP_W) | 0;
+      ctx.fillRect(tx2 * TS - cx, ty2 * TS - cy, TS, TS);
+    }
   }
   ctx.restore();
 
@@ -3050,6 +3183,10 @@ function updateHUD() {
   for (const e of G.enemies) if (!e.dead) alive++;
   $('aliveTxt').textContent = alive;
   $('progTxt').textContent = G.roomsCleared + ' / ' + rooms.length + ' 房间已清';
+  const remainRooms = rooms.filter(r => !r.isBoss && !r.cleared).length;
+  $('bossLockTxt').textContent = remainRooms > 0
+    ? 'BOSS 门锁：剩 ' + remainRooms + ' 房未清'
+    : 'BOSS 门已解锁';
 }
 
 // ---------------- 主循环 ----------------
