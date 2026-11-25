@@ -80,6 +80,15 @@ button.primary:hover{background:#ffc47d}
 .nameRow button{padding:8px 12px;font-size:11.5px}
 #nameHint{white-space:nowrap}
 .titleBest{color:var(--acc);font-size:11.5px;letter-spacing:.06em;margin-bottom:16px}
+.weaponRow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.weaponCard{border:1px solid var(--line);border-radius:4px;padding:10px 12px;cursor:pointer;
+  background:rgba(255,255,255,.03);transition:.15s;user-select:none}
+.weaponCard:hover{background:rgba(255,255,255,.06);border-color:rgba(255,178,87,.45)}
+.weaponCard.sel{border-color:var(--acc);background:rgba(255,178,87,.10)}
+.weaponCard .wname{font-size:12.5px;color:var(--txt);letter-spacing:.04em;margin-bottom:4px}
+.weaponCard .wtag{color:var(--acc);font-size:10px;border:1px solid rgba(255,178,87,.4);
+  border-radius:2px;padding:0 4px;margin-left:4px}
+.weaponCard .wstat{font-size:10.5px;color:var(--dim);line-height:1.5}
 .board{display:flex;flex-direction:column;gap:2px;max-height:330px;overflow:auto;margin-bottom:20px;
   border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px 0}
 .boardRow{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;
@@ -100,7 +109,7 @@ button.primary:hover{background:#ffc47d}
 <div id="hud">
   <div class="hud-tl">
     <div class="row"><div class="bar"><i id="hpFill"></i></div><b id="hpTxt">100</b></div>
-    <div class="row"><span>弹药</span><b id="ammoTxt">15 / 60</b><span id="reloadTxt" style="color:var(--acc)"></span></div>
+    <div class="row"><span id="weaponTxt">步枪</span><b id="ammoTxt">15 / 60</b><span id="reloadTxt" style="color:var(--acc)"></span></div>
   </div>
   <div class="hud-tr">
     <div class="floorTag" id="floorTxt">第 1 层</div>
@@ -116,12 +125,12 @@ button.primary:hover{background:#ffc47d}
 
 <div id="overlay">
   <div class="card" id="startCard">
-    <div class="tag">2D TACTICAL CQB · V1</div>
+    <div class="tag">2D TACTICAL CQB · V2</div>
     <h1>CBQ<span>室内清除</span></h1>
     <div class="sub">
       每局随机生成一片室内楼层：小房间随机拼合、走廊随机连通，<br>
-      房间主题、掩体摆法、敌人数都不同。<br>
-      <b style="color:#ffb257">你只有 120° 视野</b>——锥外全黑，视野外的敌人既不动也不开枪。清空房间，找到并打掉 BOSS。
+      房间内用薄墙隔出若干小隔间，<b style="color:#ffb257">敌人只藏在小隔间里</b>。<br>
+      你只有 120° 视野——锥外全黑。清空当前房间的所有隔间，门才会解锁。
     </div>
     <div class="legend">
       <span><i style="background:#5a6472"></i>办公区</span>
@@ -136,6 +145,16 @@ button.primary:hover{background:#ffc47d}
       <input id="nameInput" maxlength="10" value="无名特工" autocomplete="off" spellcheck="false">
       <button id="btnSaveName">保存代号</button>
       <span id="nameHint" style="color:#6f7b8a;font-size:11px"></span>
+    </div>
+    <div class="weaponRow">
+      <div class="weaponCard" data-w="rifle">
+        <div class="wname">步枪 <span class="wtag">AR</span></div>
+        <div class="wstat">15 发弹匣 · 单发 22 · 精准</div>
+      </div>
+      <div class="weaponCard" data-w="lmg">
+        <div class="wname">轻机枪 <span class="wtag">LMG</span></div>
+        <div class="wstat">150 发弹匣 · 单发 13 · 压制/散布大</div>
+      </div>
     </div>
     <div class="titleBest" id="titleBest"></div>
     <div class="keys">
@@ -156,13 +175,14 @@ button.primary:hover{background:#ffc47d}
     <div class="tag">简报</div>
     <h2>对手的规则</h2>
     <div class="sub">
-      · <b>层数</b>：打倒 1 个 BOSS 算通过 1 层，每层都会换一张新地图、敌人更强。死在半路，本局结束。<br>
-      · <b>视野</b>：120° 锥形，锥外全黑；视野外和黑暗里的敌人不显示。<br>
+      · <b>武器</b>：开局选步枪（15 发、精准）或轻机枪（150 发、压制但散布大）。<br>
+      · <b>小隔间</b>：每个房间被薄墙隔成 4 个半封闭小隔间，敌人只会在这些小隔间里。<br>
+      · <b>门锁</b>：当前房间没清空时，它的所有门锁死（红色挂锁）；清空后自动解锁。<br>
+      · <b>增援</b>：从第 2 层开始，随机房间可能藏一支三人小队——没有提示，会保持队形推进，在黑暗中会慢慢回到默认站位。<br>
+      · <b>视野</b>：120° 锥形，锥外全黑；<b>已经清空的房间会完全照亮</b>。视野外和黑暗里的敌人不显示。<br>
       · <b>黑暗规则</b>：没察觉你的敌人待在黑暗里就完全静止；你已经暴露的位置会招来追兵，但他们看不见你时不开枪。<br>
-      · <b>门</b>：走近自动开，开枪会开靠近的门；敌人开门有半秒前摇。<br>
-      · <b>对手视野</b>：墙、掩体、关着的门都会挡他们的视线，只有真看见你才会开火。<br>
-      · <b>听声</b>：枪声会把整片区域的敌人引过来，但他们只会「怀疑」并去查看，不会直接知道你的位置。<br>
-      · <b>补给</b>：医疗包 +30 血，弹药箱 +15 发；敌人也会掉。每通过一层会补一点血量与弹药。<br>
+      · <b>层数</b>：打倒 1 个 BOSS 算通过 1 层，每层换新地图、敌人更强。死在半路本局结束。<br>
+      · <b>补给</b>：医疗包 +30 血，弹药箱按武器补；敌人也会掉。每通过一层补一点血量与弹药。<br>
       · <b>排行榜</b>：只存在本机，记录代号和通过的层数，最多显示 9999999 层。代号有一次改名机会。
     </div>
     <div class="btns"><button class="primary" id="btnBack">返回</button></div>
@@ -227,8 +247,22 @@ const MAP_W = CELL * GRID, MAP_H = CELL * GRID;
 const WORLD_W = MAP_W * TS, WORLD_H = MAP_H * TS;
 
 const P_SPEED = 224, P_RADIUS = 10;
-const MAG_SIZE = 15, RELOAD_TIME = 1.1, FIRE_CD = 0.145, BULLET_DMG = 22;
+const MAG_SIZE = 15, RELOAD_TIME = 1.1, FIRE_CD = 0.145, BULLET_DMG = 22; // 兼容旧引用
 const STEPS_PER_FRAME = 1 / 120;
+// 武器：步枪（精准）/ 轻机枪（150 发弹匣、泼水、换弹慢）
+const WEAPONS = {
+  rifle: {
+    key: 'rifle', name: '步枪', short: 'AR',
+    mag: 15, reserve: 60, reserveMax: 150, ammoPickup: 15, dmg: 22, cd: 0.145, reload: 1.1,
+    spread: 0.018, moveSpread: 0.016, kick: 2.0
+  },
+  lmg: {
+    key: 'lmg', name: '轻机枪', short: 'LMG',
+    mag: 150, reserve: 300, reserveMax: 360, ammoPickup: 40, dmg: 13, cd: 0.085, reload: 3.0,
+    spread: 0.052, moveSpread: 0.028, kick: 1.2
+  }
+};
+let selectedWeapon = 'rifle';
 // 视野：120° 锥形
 const FOV_DEG = 120;
 const FOV_HALF = FOV_DEG * Math.PI / 360;
@@ -417,6 +451,7 @@ function newGame() {
     camera: { x: 0, y: 0, sx: 0, sy: 0, shake: 0 },
     player: null,
     enemies: [], pickups: [], particles: [], tracers: [], casings: [], decals: [], floats: [], doorFx: [],
+    squads: [],
     pointer: { x: 0, y: 0, inside: false, screenX: 0, screenY: 0 },
     keys: {}, mouseDown: false,
     bossDead: false, bossRoom: -1,
@@ -572,7 +607,7 @@ function genLevel(seed) {
   const bossRoomIdx = roomList.findIndex(r => r.isBoss);
   G_bossRoomStatic = bossRoomIdx;
 
-  // ---- 挖房间 + 掩体 ----
+  // ---- 挖房间 + 薄墙小隔间 ----
   roomList.forEach(r => {
     for (let y = r.y; y < r.y + r.h; y++) {
       for (let x = r.x; x < r.x + r.w; x++) {
@@ -580,8 +615,7 @@ function genLevel(seed) {
         grid[tI(x, y)] = 1; roomAt[tI(x, y)] = r.idx;
       }
     }
-    buildProps(r, rng, ri, rf);
-    ensureReachable(r, rng, ri);
+    buildPartitions(r, rng);
   });
 
   // ---- 走廊 ----
@@ -667,6 +701,108 @@ function connectRooms(a, b) {
   dg.cy = dg.tiles.reduce((s, t) => s + t[1], 0) / dg.tiles.length;
   doorGroups.push(dg);
   return dg;
+}
+
+// 室内薄墙：把房间递归切成若干半封闭小隔间（门洞 2 格宽，生成后做连通修复）
+const PARTITION = 4;
+function buildPartitions(r, rng) {
+  const minLeaf = 4;
+  const leaves = [];
+  const split = (x, y, w, h, depth) => {
+    const canV = w >= 2 * minLeaf + 1;
+    const canH = h >= 2 * minLeaf + 1;
+    if (depth >= 2 || (!canV && !canH)) {
+      if (w >= 2 && h >= 2) leaves.push({ x, y, w, h });
+      return;
+    }
+    const vertical = canV && (!canH || rng() < 0.5);
+    if (vertical) {
+      const sx = x + minLeaf + Math.floor(rng() * (w - 2 * minLeaf));
+      const gap = y + Math.floor(rng() * Math.max(1, h - 1));
+      for (let yy = y; yy < y + h; yy++) {
+        if (yy === gap || yy === gap + 1) continue;
+        if (inMap(sx, yy)) grid[tI(sx, yy)] = PARTITION;
+      }
+      split(x, y, sx - x, h, depth + 1);
+      split(sx + 1, y, x + w - sx - 1, h, depth + 1);
+    } else {
+      const sy = y + minLeaf + Math.floor(rng() * (h - 2 * minLeaf));
+      const gap = x + Math.floor(rng() * Math.max(1, w - 1));
+      for (let xx = x; xx < x + w; xx++) {
+        if (xx === gap || xx === gap + 1) continue;
+        if (inMap(xx, sy)) grid[tI(xx, sy)] = PARTITION;
+      }
+      split(x, y, w, sy - y, depth + 1);
+      split(x, sy + 1, w, y + h - sy - 1, depth + 1);
+    }
+  };
+  split(r.x, r.y, r.w, r.h, 0);
+  r.subRooms = leaves;
+  ensurePartitionConnectivity(r);
+}
+
+// 隔墙可能互相堵住门洞，生成后按连通分量补开通道（2 格宽）
+function roomComponents(r) {
+  const seen = new Uint8Array(MAP_W * MAP_H);
+  const comps = [];
+  for (let y = r.y; y < r.y + r.h; y++) {
+    for (let x = r.x; x < r.x + r.w; x++) {
+      if (grid[tI(x, y)] !== 1 || seen[tI(x, y)]) continue;
+      const stack = [[x, y]], cells = [];
+      seen[tI(x, y)] = 1;
+      while (stack.length) {
+        const [cx2, cy2] = stack.pop();
+        cells.push([cx2, cy2]);
+        for (const [dx, dy] of DIRS) {
+          const nx = cx2 + dx, ny = cy2 + dy;
+          if (nx < r.x || ny < r.y || nx >= r.x + r.w || ny >= r.y + r.h) continue;
+          if (grid[tI(nx, ny)] !== 1 || seen[tI(nx, ny)]) continue;
+          seen[tI(nx, ny)] = 1;
+          stack.push([nx, ny]);
+        }
+      }
+      comps.push(cells);
+    }
+  }
+  return comps;
+}
+function ensurePartitionConnectivity(r) {
+  for (let iter = 0; iter < 8; iter++) {
+    const comps = roomComponents(r);
+    if (comps.length <= 1) return;
+    comps.sort((a, b) => b.length - a.length);
+    const main = comps[0];
+    let best = null, bestD = 1e9;
+    for (let ci = 1; ci < comps.length; ci++) {
+      for (const [x, y] of comps[ci]) {
+        for (const [mx, my] of main) {
+          const d = Math.abs(x - mx) + Math.abs(y - my);
+          if (d < bestD) { bestD = d; best = [[x, y], [mx, my]]; }
+        }
+      }
+    }
+    if (!best) return;
+    let [ax, ay] = best[0];
+    const [bx, by] = best[1];
+    const carve = (x, y) => {
+      if (x < r.x || y < r.y || x >= r.x + r.w || y >= r.y + r.h) return;
+      if (grid[tI(x, y)] === PARTITION) grid[tI(x, y)] = 1;
+    };
+    const carveWide = (x, y, horizStep) => {
+      carve(x, y);
+      if (horizStep) carve(x, y + 1); else carve(x + 1, y);
+    };
+    while (ax !== bx) {
+      const sx2 = Math.sign(bx - ax);
+      ax += sx2;
+      carveWide(ax, ay, true);
+    }
+    while (ay !== by) {
+      const sy2 = Math.sign(by - ay);
+      ay += sy2;
+      carveWide(ax, ay, false);
+    }
+  }
 }
 
 function buildProps(r, rng, ri, rf) {
@@ -793,6 +929,7 @@ function solid(x, y) {
     return !!d && d.anim < 0.55;
   }
   if (t === 3) return true;
+  if (t === 4) return true;   // 室内薄墙
   return false;
 }
 function walkable(x, y) { return !solid(x, y); }
@@ -982,10 +1119,14 @@ const astar = (function () {
 
 // ---------------- 玩家 / 敌人 ----------------
 function makePlayer(tx, ty) {
+  const W = WEAPONS[selectedWeapon] || WEAPONS.rifle;
   return {
     x: tx * TS + TS / 2, y: ty * TS + TS / 2, r: P_RADIUS,
     angle: 0, hp: 100, maxHp: 100,
-    mag: MAG_SIZE, reserve: 60, reloading: 0, fireCd: 0,
+    weapon: W.key, magSize: W.mag, mag: W.mag, reserve: W.reserve,
+    reserveMax: W.reserveMax, ammoPickup: W.ammoPickup,
+    reloadTime: W.reload, reloading: 0, fireCd: 0,
+    dmg: W.dmg, fireRate: W.cd, spread: W.spread, moveSpread: W.moveSpread, kickAmt: W.kick,
     invuln: 0, hurtFx: 0, kick: 0, step: 0, moving: false, hitmark: 0
   };
 }
@@ -1056,10 +1197,11 @@ function spawnLevel(seed, opts) {
   const sp = pickSpawn(sr);
   const p = makePlayer(sp[0], sp[1]);
   if (opts.hp != null) p.hp = clamp(opts.hp, 1, p.maxHp);
-  if (opts.reserve != null) p.reserve = clamp(opts.reserve, 0, 150);
+  if (opts.reserve != null) p.reserve = clamp(opts.reserve, 0, p.reserveMax);
   G.player = p;
   G.enemies = []; G.pickups = []; G.particles = []; G.tracers = [];
   G.casings = []; G.decals = []; G.floats = []; G.doorFx = [];
+  G.squads = [];
   if (!carry) { G.kills = 0; G.shots = 0; G.hits = 0; G.time = 0; }
   G.roomsCleared = 0;
   G.bossDead = false; G.bossRoom = rooms.findIndex(r => r.isBoss);
@@ -1110,6 +1252,17 @@ function spawnLevel(seed, opts) {
     }
   });
 
+  // 增援：从第 2 层开始，每层有概率在随机房间刷一支三人小队（无提示）
+  if (G.floor >= 2) {
+    const chance = Math.min(0.72, 0.30 + G.floor * 0.05);
+    if (rng() < chance) {
+      const cands = rooms.filter(r => r.idx !== startRoom && !r.isBoss && r.subRooms && r.subRooms.length);
+      if (cands.length) {
+        placeReinforcementSquad(cands[Math.floor(rng() * cands.length)], rng);
+      }
+    }
+  }
+
   G.camera.x = p.x; G.camera.y = p.y;
   G.mode = 'menu';
   updateHUD();
@@ -1132,6 +1285,7 @@ function freeSpotIn(r, rng, avoid) {
   return null;
 }
 function placeEnemies(r, count, type, rng, boss) {
+  const leaves = (r.subRooms && r.subRooms.length) ? r.subRooms : [{ x: r.x, y: r.y, w: r.w, h: r.h }];
   const used = [];
   const isFree = (x, y) => {
     if (grid[tI(x, y)] !== 1) return false;
@@ -1143,7 +1297,7 @@ function placeEnemies(r, count, type, rng, boss) {
   for (let i = 0; i < count; i++) {
     let pos = null;
     if (boss && type === 'boss') {
-      // BOSS 靠近房间中央，但中心可能有指挥台，向外扩一圈找
+      // BOSS 靠近房间中央，但中心可能有隔墙，向外扩一圈找
       const cx = Math.floor(r.cx), cy = Math.floor(r.cy);
       for (let rad = 0; rad <= 4 && !pos; rad++) {
         for (let oy = -rad; oy <= rad && !pos; oy++) {
@@ -1155,9 +1309,11 @@ function placeEnemies(r, count, type, rng, boss) {
       }
     }
     if (!pos) {
-      for (let tries = 0; tries < 120 && !pos; tries++) {
-        const x = r.x + 1 + Math.floor(rng() * (r.w - 2));
-        const y = r.y + 1 + Math.floor(rng() * (r.h - 2));
+      // 敌人只在小隔间里生成
+      for (let tries = 0; tries < 140 && !pos; tries++) {
+        const leaf = leaves[Math.floor(rng() * leaves.length)];
+        const x = leaf.x + Math.floor(rng() * leaf.w);
+        const y = leaf.y + Math.floor(rng() * leaf.h);
         if (isFree(x, y)) pos = [x, y];
       }
     }
@@ -1171,6 +1327,90 @@ function placeEnemies(r, count, type, rng, boss) {
     G.enemies.push(e);
     r.alive++; r.total++;
   }
+}
+
+// ---------------- 增援小队 ----------------
+// 三人小队：队长在前，两名队员在后方左右。未接敌时在黑暗中慢慢回到队位；
+// 接敌后保持队形推进。生成时没有任何提示。
+const SQUAD_SLOTS = [
+  { f: 0.0, s: 0.0, role: 'leader' },
+  { f: -1.35, s: 1.15, role: 'wing' },
+  { f: -1.35, s: -1.15, role: 'wing' }
+];
+function placeReinforcementSquad(r, rng) {
+  const leaves = r.subRooms || [];
+  if (!leaves.length) return;
+  // 选一个能容纳的小隔间
+  const leaf = leaves[Math.floor(rng() * leaves.length)];
+  const ax = (leaf.x + leaf.w / 2) * TS;
+  const ay = (leaf.y + leaf.h / 2) * TS;
+  const angle = rng() * TAU;
+  const sq = { id: G.squads.length, anchor: { x: ax, y: ay }, angle, members: [], alert: false };
+  const used = [];
+  const floorNear = (tx, ty) => {
+    let best = null, bd = 1e9;
+    for (let y = leaf.y; y < leaf.y + leaf.h; y++) {
+      for (let x = leaf.x; x < leaf.x + leaf.w; x++) {
+        if (grid[tI(x, y)] !== 1) continue;
+        if (used.some(u => u.x === x && u.y === y)) continue;
+        const d = (x - tx) * (x - tx) + (y - ty) * (y - ty);
+        if (d < bd) { bd = d; best = [x, y]; }
+      }
+    }
+    return best;
+  };
+  for (let i = 0; i < SQUAD_SLOTS.length; i++) {
+    const slot = SQUAD_SLOTS[i];
+    const fx = Math.cos(angle), fy = Math.sin(angle);
+    const tx = (ax + fx * slot.f * TS - fy * slot.s * TS) / TS;
+    const ty = (ay + fy * slot.f * TS + fx * slot.s * TS) / TS;
+    const pos = floorNear(tx, ty);
+    if (!pos) continue;
+    used.push({ x: pos[0], y: pos[1] });
+    const e = makeEnemy(pos[0], pos[1], 'grunt', r.idx, rng);
+    e.hp = Math.round(e.hp * (G.diffHp || 1));
+    e.maxHp = e.hp;
+    e.dmg = Math.round(e.dmg * (G.diffDmg || 1) * 10) / 10;
+    e.squadId = sq.id;
+    e.slot = slot;
+    e.squadRole = slot.role;
+    e.state = 'idle';
+    sq.members.push(e);
+    G.enemies.push(e);
+    r.alive++; r.total++;
+  }
+  if (sq.members.length) G.squads.push(sq);
+}
+function squadSlotPos(e) {
+  const sq = G.squads[e.squadId];
+  if (!sq || !e.slot) return null;
+  let ax, ay, ang;
+  if (sq.alert && sq.members[0] && !sq.members[0].dead) {
+    ax = sq.members[0].x; ay = sq.members[0].y; ang = sq.members[0].aim;
+  } else {
+    ax = sq.anchor.x; ay = sq.anchor.y; ang = sq.angle;
+  }
+  const fx = Math.cos(ang), fy = Math.sin(ang);
+  return {
+    x: ax + fx * e.slot.f * TS - fy * e.slot.s * TS,
+    y: ay + fy * e.slot.f * TS + fx * e.slot.s * TS
+  };
+}
+function alertSquad(id, px, py) {
+  const sq = G.squads[id];
+  if (!sq) return;
+  sq.alert = true;
+  for (const m of sq.members) {
+    if (m.dead) continue;
+    m.state = 'chase';
+    m.lastX = px; m.lastY = py; m.lostT = 1.2; m.repathT = 0;
+  }
+}
+function squadAllCalm(sq) {
+  for (const m of sq.members) {
+    if (!m.dead && (m.state === 'chase' || m.state === 'search' || m.state === 'suspicious')) return false;
+  }
+  return true;
 }
 
 // ---------------- 输入 ----------------
@@ -1241,7 +1481,7 @@ function startRun() {
 function nextFloor() {
   if (!G || G.mode !== 'intermission') return;
   const hp = Math.min(G.player.maxHp, G.player.hp + FLOOR_HEAL);
-  const reserve = Math.max(90, G.player.reserve);
+  const reserve = Math.max(G.player.magSize * 2, G.player.reserve);
   G.floor++;
   spawnLevel((Math.random() * 1e9) | 0, { carry: true, hp, reserve });
   G.mode = 'playing';
@@ -1352,6 +1592,17 @@ function refreshNameUI() {
     ? '本机最高：' + fmtFloors(Save.best()) + ' 层'
     : '';
 }
+function refreshWeaponUI() {
+  document.querySelectorAll('.weaponCard').forEach(card => {
+    card.classList.toggle('sel', card.dataset.w === selectedWeapon);
+  });
+}
+document.querySelectorAll('.weaponCard').forEach(card => {
+  card.addEventListener('click', () => {
+    selectedWeapon = card.dataset.w === 'lmg' ? 'lmg' : 'rifle';
+    refreshWeaponUI();
+  });
+});
 function renderBoard() {
   const list = $('boardList');
   const scores = Save.data.scores.slice().sort((a, b) => b.floors - a.floors || a.ts - b.ts);
@@ -1371,11 +1622,11 @@ let boardReturn = 'startCard';
 
 $('btnStart').onclick = startRun;
 $('btnHow').onclick = () => showOverlay('howCard');
-$('btnBack').onclick = () => { refreshNameUI(); showOverlay('startCard'); };
+$('btnBack').onclick = () => { refreshNameUI(); refreshWeaponUI(); showOverlay('startCard'); };
 $('btnResume').onclick = resumeGame;
 $('btnQuit').onclick = quitToTitle;
 $('btnAgain').onclick = startRun;
-$('btnToTitle').onclick = () => { refreshNameUI(); showOverlay('startCard'); };
+$('btnToTitle').onclick = () => { refreshNameUI(); refreshWeaponUI(); showOverlay('startCard'); };
 $('btnNextFloor').onclick = nextFloor;
 $('btnCashOut').onclick = () => { if (G && G.mode === 'intermission') endRun('cashout'); };
 $('btnBoard').onclick = () => { boardReturn = 'startCard'; renderBoard(); showOverlay('boardCard'); };
@@ -1405,8 +1656,16 @@ $('nameInput').addEventListener('keydown', e => {
 });
 
 // ---------------- 门 ----------------
+// 玩家所在房间没清空时，这个房间的门全部锁死
+function doorLocked(d) {
+  if (!G || !G.player) return false;
+  const pr = roomAtPoint(G.player.x, G.player.y);
+  if (!pr || pr.cleared) return false;
+  return d.a === pr.idx || d.b === pr.idx;
+}
 function openDoor(d) {
   if (d.open) return;
+  if (doorLocked(d)) return;
   d.open = true; d.timer = 0;
   Sound.door();
   // 开门会把两侧房间标到小地图上
@@ -1426,7 +1685,13 @@ function updateDoors(dt) {
   doorGroups.forEach(d => {
     const cx = d.cx * TS, cy = d.cy * TS;
     const pd = dist(p.x, p.y, cx, cy);
-    if (!d.open && pd < TS * 2.6) openDoor(d);
+    const locked = doorLocked(d);
+    if (!locked && !d.open && pd < TS * 2.6) openDoor(d);
+    // 锁死的房间：已经开的门会在身后慢慢关上
+    if (locked && d.open && pd > TS * 1.2) {
+      d.open = false; d.timer = 0;
+      Sound.door();
+    }
     if (d.open) {
       let near = pd < TS * 3.4;
       if (!near) {
@@ -1447,8 +1712,8 @@ function updateDoors(dt) {
 // ---------------- 射击 ----------------
 function startReload() {
   const p = G.player;
-  if (p.reloading > 0 || p.mag >= MAG_SIZE || p.reserve <= 0) return;
-  p.reloading = RELOAD_TIME;
+  if (p.reloading > 0 || p.mag >= p.magSize || p.reserve <= 0) return;
+  p.reloading = p.reloadTime;
   Sound.reload();
 }
 
@@ -1462,13 +1727,13 @@ function fire() {
     return;
   }
   p.mag--;
-  p.fireCd = FIRE_CD;
+  p.fireCd = p.fireRate;
   p.kick = 1;
   G.shots++;
   Sound.shot();
-  G.camera.shake = Math.min(8, G.camera.shake + 2.0);
+  G.camera.shake = Math.min(8, G.camera.shake + p.kickAmt);
 
-  const spread = 0.018 + (p.moving ? 0.016 : 0);
+  const spread = p.spread + (p.moving ? p.moveSpread : 0);
   const a = p.angle + (Math.random() * 2 - 1) * spread;
   const dx = Math.cos(a), dy = Math.sin(a);
   const mx = p.x + dx * 16, my = p.y + dy * 16;
@@ -1495,7 +1760,7 @@ function fire() {
   G.tracers.push({ x1: mx, y1: my, x2: ex, y2: ey, t: 0, life: 0.055 });
   if (hitEnemy) {
     G.hits++;
-    damageEnemy(hitEnemy, BULLET_DMG, a);
+    damageEnemy(hitEnemy, p.dmg, a);
     sparks(ex, ey, '#ffd2a0', 5);
     p.hitmark = 0.12;
     Sound.hitmark();
@@ -1535,6 +1800,7 @@ function damageEnemy(e, dmg) {
   if (e.dead) return;
   e.hp -= dmg;
   e.flash = 0.14;
+  if (e.squadId != null) alertSquad(e.squadId, G.player.x, G.player.y);
   if (e.state === 'idle' || e.state === 'suspicious') {
     e.state = 'chase';
     e.lastX = G.player.x; e.lastY = G.player.y; e.lostT = 1.2;
@@ -1624,7 +1890,7 @@ function updatePlayer(dt) {
     p.reloading -= dt;
     if (p.reloading <= 0) {
       p.reloading = 0;
-      const need = MAG_SIZE - p.mag;
+      const need = p.magSize - p.mag;
       const take = Math.min(need, p.reserve);
       p.mag += take; p.reserve -= take;
     }
@@ -1665,9 +1931,9 @@ function updatePlayer(dt) {
         p.hp = Math.min(p.maxHp, p.hp + 30);
         floats(pk.x, pk.y - 12, '+30 HP', '#7ee08a', 1);
       } else {
-        if (p.reserve >= 150) continue;
-        p.reserve = Math.min(150, p.reserve + 15);
-        floats(pk.x, pk.y - 12, '+15 弹药', '#ffb257', 1);
+        if (p.reserve >= p.reserveMax) continue;
+        p.reserve = Math.min(p.reserveMax, p.reserve + p.ammoPickup);
+        floats(pk.x, pk.y - 12, '+' + p.ammoPickup + ' 弹药', '#ffb257', 1);
       }
       pk.taken = true;
       Sound.pickup();
@@ -1685,6 +1951,33 @@ function updateEnemy(e, dt) {
   const canSee = dP < e.vision && Math.abs(angDiff(Math.atan2(dy, dx), e.aim)) < 1.35 &&
     hasLOS(e.x, e.y, p.x, p.y);
   const senseClose = dP < 60 && hasLOS(e.x, e.y, p.x, p.y);
+
+  // ---- 增援小队行为 ----
+  if (e.squadId != null) {
+    const sq = G.squads[e.squadId];
+    if (sq) {
+      if (e.state === 'chase') {
+        sq.alert = true;
+      } else if (e.state !== 'search') {
+        if (canSee || senseClose) {
+          alertSquad(e.squadId, p.x, p.y);
+        } else {
+          // 未接敌：即使在黑暗中也会慢慢走回默认队位
+          const target = squadSlotPos(e);
+          if (target) {
+            const dd = dist(e.x, e.y, target.x, target.y);
+            if (dd > 5) {
+              const a = Math.atan2(target.y - e.y, target.x - e.x);
+              moveEntity(e, Math.cos(a) * 26 * dt, Math.sin(a) * 26 * dt, e.r);
+              e.aim = lerpAngle(e.aim, a, 0.08);
+            }
+          }
+          e.flash = Math.max(0, e.flash - dt * 5);
+          return;
+        }
+      }
+    }
+  }
 
   // 不在玩家视野里、也没察觉到你：完全静止（不踱步、不转枪口）
   if (!e.visible && (e.state === 'idle' || e.state === 'suspicious')) {
@@ -1728,16 +2021,32 @@ function updateEnemy(e, dt) {
     if (canSee) {
       e.aim = lerpAngle(e.aim, toP, 0.35);
       const desired = e.type === 'boss' ? 200 : 150;
-      if (dP > desired + 26) {
-        moveEntity(e, Math.cos(toP) * e.speed * dt, Math.sin(toP) * e.speed * dt, e.r);
-        e.step += e.speed * dt;
-      } else if (dP < desired - 44) {
-        moveEntity(e, -Math.cos(toP) * e.speed * 0.7 * dt, -Math.sin(toP) * e.speed * 0.7 * dt, e.r);
-      } else {
-        e.strafeT -= dt;
-        if (e.strafeT <= 0) { e.strafe *= -1; e.strafeT = 0.8 + Math.random() * 1.4; }
-        const sa = toP + Math.PI / 2 * e.strafe;
-        moveEntity(e, Math.cos(sa) * e.speed * 0.6 * dt, Math.sin(sa) * e.speed * 0.6 * dt, e.r);
+      // 小队队员优先回队位，避免挤成一团
+      let formationMove = false;
+      if (e.squadId != null && e.slot && e.slot.role === 'wing') {
+        const tgt = squadSlotPos(e);
+        if (tgt) {
+          const dd = dist(e.x, e.y, tgt.x, tgt.y);
+          if (dd > 64) {
+            const aa = Math.atan2(tgt.y - e.y, tgt.x - e.x);
+            moveEntity(e, Math.cos(aa) * e.speed * dt, Math.sin(aa) * e.speed * dt, e.r);
+            e.step += e.speed * dt;
+            formationMove = true;
+          }
+        }
+      }
+      if (!formationMove) {
+        if (dP > desired + 26) {
+          moveEntity(e, Math.cos(toP) * e.speed * dt, Math.sin(toP) * e.speed * dt, e.r);
+          e.step += e.speed * dt;
+        } else if (dP < desired - 44) {
+          moveEntity(e, -Math.cos(toP) * e.speed * 0.7 * dt, -Math.sin(toP) * e.speed * 0.7 * dt, e.r);
+        } else {
+          e.strafeT -= dt;
+          if (e.strafeT <= 0) { e.strafe *= -1; e.strafeT = 0.8 + Math.random() * 1.4; }
+          const sa = toP + Math.PI / 2 * e.strafe;
+          moveEntity(e, Math.cos(sa) * e.speed * 0.6 * dt, Math.sin(sa) * e.speed * 0.6 * dt, e.r);
+        }
       }
       // 开火：看不见你的时候不开枪（不空放、不隔着黑暗点名）
       e.fireCd -= dt;
@@ -1852,6 +2161,10 @@ function update(dt) {
   updatePlayer(dt);
   updateDoors(dt);
   for (const e of G.enemies) updateEnemy(e, dt);
+  // 小队全员冷静下来后，回默认队位
+  for (const sq of G.squads) {
+    if (sq.alert && squadAllCalm(sq)) sq.alert = false;
+  }
   updateFx(dt);
   updateCamera(dt);
   updateVision();
@@ -1968,11 +2281,19 @@ function draw() {
     }
   }
 
-  // 掩体
+  // 掩体（V2 已不再生成，保留兼容）
   for (let y = y0; y <= y1; y++) {
     for (let x = x0; x <= x1; x++) {
       if (grid[tI(x, y)] !== 3) continue;
       drawProp(x * TS - cx, y * TS - cy, x, y, roomAt[tI(x, y)]);
+    }
+  }
+
+  // 室内薄墙（小隔间）
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      if (grid[tI(x, y)] !== 4) continue;
+      drawPartition(x * TS - cx, y * TS - cy, x, y);
     }
   }
 
@@ -2089,6 +2410,25 @@ function shade(sx, sy, w, h, side) {
   }
   ctx.fillStyle = g;
   ctx.fillRect(sx, sy, w, h);
+}
+
+function drawPartition(sx, sy, x, y) {
+  const g = roomAt[tI(x, y)];
+  const th = g >= 0 ? rooms[g].theme : null;
+  const base = th ? th.wall : [70, 75, 86];
+  const v = 1.14;
+  ctx.fillStyle = 'rgb(' + Math.min(255, base[0] * v | 0) + ',' +
+    Math.min(255, base[1] * v | 0) + ',' + Math.min(255, base[2] * v | 0) + ')';
+  ctx.fillRect(sx, sy, TS, TS);
+  // 顶面高光 / 底部阴影，像一堵薄内墙
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.fillRect(sx, sy, TS, 4);
+  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  ctx.fillRect(sx + TS - 3, sy, 3, TS);
+  ctx.fillRect(sx, sy + TS - 3, TS, 3);
+  // 拼接竖缝
+  ctx.fillStyle = 'rgba(0,0,0,0.16)';
+  ctx.fillRect(sx + TS / 2, sy, 1, TS);
 }
 
 function drawWall(sx, sy, x, y, g) {
@@ -2228,9 +2568,10 @@ function drawDoor(d, cx, cy) {
     ctx.stroke();
   }
 
-  // 状态灯：关门红、开门绿，缓慢闪烁
+  // 状态灯：关门红、开门绿；房间没清空时锁死，强制红灯
+  const locked = doorLocked(d);
   const blink = 0.55 + Math.sin(G.time * 6) * 0.45;
-  const lamp = d.open
+  const lamp = (d.open && !locked)
     ? 'rgba(126,224,138,' + (0.55 + blink * 0.45).toFixed(3) + ')'
     : 'rgba(255,110,70,' + (0.45 + blink * 0.45).toFixed(3) + ')';
   const lamps = horiz
@@ -2243,8 +2584,25 @@ function drawDoor(d, cx, cy) {
     ctx.beginPath(); ctx.arc(lx2, ly2, 2.4, 0, TAU); ctx.fill();
   }
 
+  // 锁死状态：门中央挂一把锁 + 红色警示
+  if (locked) {
+    ctx.fillStyle = 'rgba(255,60,40,0.10)';
+    ctx.fillRect(x - 5, y - 5, w + 10, h + 10);
+    ctx.strokeStyle = 'rgba(255,90,70,0.95)';
+    ctx.lineWidth = 2;
+    // 锁体
+    ctx.strokeRect(gcx - 4.5, gcy - 1.5, 9, 8);
+    // 锁梁
+    ctx.beginPath();
+    ctx.arc(gcx, gcy - 1.5, 3.4, Math.PI, 0);
+    ctx.stroke();
+    // 锁孔
+    ctx.fillStyle = 'rgba(255,120,90,0.9)';
+    ctx.fillRect(gcx - 0.8, gcy + 2, 1.6, 2.6);
+  }
+
   // 玩家靠近提示
-  if (!d.open) {
+  if (!d.open && !locked) {
     const pd = dist(G.player.x, G.player.y, d.cx * TS, d.cy * TS);
     if (pd < TS * 3) {
       ctx.strokeStyle = 'rgba(255,178,87,' + (0.3 + Math.sin(G.time * 5) * 0.16).toFixed(3) + ')';
@@ -2391,7 +2749,7 @@ function drawPlayer(cx, cy, t) {
   ctx.fillRect(6 + kick, -2.5, 18, 5);
   ctx.fillStyle = '#343a44';
   ctx.fillRect(6 + kick, -2.5, 12, 2);
-  if (p.fireCd > FIRE_CD - 0.035) {
+  if (p.fireCd > p.fireRate - 0.035) {
     const gr = ctx.createRadialGradient(24 + kick, 0, 1, 24 + kick, 0, 16);
     gr.addColorStop(0, 'rgba(255,242,196,0.95)');
     gr.addColorStop(0.4, 'rgba(255,180,80,0.5)');
@@ -2486,6 +2844,13 @@ function drawFOVMask(cx, cy) {
   dctx.fillStyle = hole;
   dctx.fill();
 
+  // ---- 1.5) 已清空的房间完全照亮：整间房不再压暗 ----
+  dctx.fillStyle = 'rgba(255,255,255,1)';
+  for (const r of rooms) {
+    if (!r.cleared) continue;
+    dctx.fillRect(r.x * TS - cx, r.y * TS - cy, r.w * TS, r.h * TS);
+  }
+
   // ---- 2) 锥内轻暖光，让「被照亮」的感觉更明确 ----
   dctx.globalCompositeOperation = 'lighter';
   dctx.beginPath();
@@ -2507,6 +2872,24 @@ function drawFOVMask(cx, cy) {
   ctx.save();
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.drawImage(darkCv, 0, 0, W, H);
+  ctx.restore();
+
+  // ---- 3.5) 已清房间补一层暖光，看起来是“亮着”的 ----
+  ctx.save();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.globalCompositeOperation = 'lighter';
+  for (const r of rooms) {
+    if (!r.cleared) continue;
+    const rx = r.x * TS - cx, ry = r.y * TS - cy;
+    const rw = r.w * TS, rh = r.h * TS;
+    if (rx > W || ry > H || rx + rw < 0 || ry + rh < 0) continue;
+    const lg = ctx.createRadialGradient(rx + rw / 2, ry + rh / 2, Math.min(rw, rh) * 0.2,
+      rx + rw / 2, ry + rh / 2, Math.max(rw, rh) * 0.65);
+    lg.addColorStop(0, 'rgba(70,84,96,0.10)');
+    lg.addColorStop(1, 'rgba(40,50,60,0.02)');
+    ctx.fillStyle = lg;
+    ctx.fillRect(rx, ry, rw, rh);
+  }
   ctx.restore();
 
   // ---- 4) 视野边界一道很淡的冷光，便于判断视野边缘 ----
@@ -2565,59 +2948,60 @@ function drawCrosshair(cx, cy) {
 
 function drawMinimap() {
   const W = VIEW.w;
-  const mw = 196, mh = 172;
+  const mw = 210, mh = 184;
   const mx = W - mw - 20, my = 122;
   const s = Math.min(mw / MAP_W, mh / MAP_H);
   ctx.save();
-  ctx.fillStyle = 'rgba(8,10,14,0.74)';
+  ctx.fillStyle = 'rgba(8,10,14,0.78)';
   ctx.fillRect(mx - 7, my - 7, mw + 14, mh + 14);
   ctx.strokeStyle = 'rgba(255,255,255,0.11)';
   ctx.lineWidth = 1;
   ctx.strokeRect(mx - 7, my - 7, mw + 14, mh + 14);
 
-  // 走廊
-  ctx.fillStyle = 'rgba(255,255,255,0.07)';
+  // 走廊底
+  ctx.fillStyle = 'rgba(255,255,255,0.05)';
   ctx.fillRect(mx, my, mw, mh);
 
+  // 全图房间轮廓：没探索也看得到结构，探索程度只影响填充与亮度
   for (const r of rooms) {
-    const rx = mx + r.x * s, ry = my + r.y * s, rw = r.w * s, rh = r.h * s;
+    const rx = mx + r.x * s, ry = my + r.y * s, rw = Math.max(2, r.w * s), rh = Math.max(2, r.h * s);
     const cur = roomAtPoint(G.player.x, G.player.y) === r;
-    if (r.isBoss && !r.discovered && !cur) {
-      // BOSS 房位置始终可见：目标
-      ctx.fillStyle = 'rgba(255,80,70,0.14)';
-      ctx.fillRect(rx, ry, rw, rh);
-      ctx.strokeStyle = 'rgba(255,80,70,0.5)';
-      ctx.setLineDash([2, 2]);
-      ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1);
-      ctx.setLineDash([]);
+    let fill, stroke;
+    if (cur) {
+      fill = r.cleared ? 'rgba(140,235,150,0.26)' : 'rgba(255,178,87,0.24)';
+      stroke = r.cleared ? 'rgba(140,235,150,0.95)' : 'rgba(255,178,87,0.95)';
     } else if (r.cleared) {
-      ctx.fillStyle = 'rgba(126,224,138,0.20)';
-      ctx.fillRect(rx, ry, rw, rh);
-      ctx.strokeStyle = 'rgba(126,224,138,0.65)';
-      ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1);
-    } else if (cur) {
-      ctx.fillStyle = 'rgba(255,178,87,0.24)';
-      ctx.fillRect(rx, ry, rw, rh);
-      ctx.strokeStyle = 'rgba(255,178,87,0.9)';
-      ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1);
+      fill = 'rgba(126,224,138,0.16)';
+      stroke = 'rgba(126,224,138,0.62)';
     } else if (r.discovered) {
-      ctx.fillStyle = 'rgba(255,255,255,0.10)';
-      ctx.fillRect(rx, ry, rw, rh);
-      ctx.strokeStyle = 'rgba(255,255,255,0.26)';
-      ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1);
+      fill = 'rgba(255,255,255,0.08)';
+      stroke = 'rgba(255,255,255,0.30)';
+    } else if (r.isBoss) {
+      fill = 'rgba(255,80,70,0.10)';
+      stroke = 'rgba(255,80,70,0.55)';
+    } else {
+      fill = null;
+      stroke = 'rgba(255,255,255,0.15)';
     }
+    if (r.isBoss && (cur || r.discovered)) stroke = 'rgba(255,90,70,0.95)';
+    if (fill) { ctx.fillStyle = fill; ctx.fillRect(rx, ry, rw, rh); }
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = cur ? 1.6 : 1;
+    ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1);
     if (r.discovered || cur || r.isBoss) {
-      ctx.fillStyle = r.cleared ? 'rgba(126,224,138,0.9)' : 'rgba(255,255,255,0.55)';
+      ctx.fillStyle = r.cleared ? 'rgba(150,240,160,0.95)'
+        : (r.isBoss ? 'rgba(255,120,100,0.95)' : 'rgba(255,255,255,0.62)');
       ctx.font = 'bold 7px monospace';
       ctx.textAlign = 'left';
       ctx.fillText(r.isBoss ? '★' : (r.letter || ''), rx + 1.5, ry + 7.5);
     }
   }
 
-  // 门（琥珀色小点，便于找入口）
-  ctx.fillStyle = 'rgba(255,190,90,0.8)';
+  // 门（琥珀色小点，全图可见）
+  ctx.fillStyle = 'rgba(255,190,90,0.85)';
   for (const d of doorGroups) {
-    ctx.fillRect(mx + d.cx * s - 1, my + d.cy * s - 1, 2, 2);
+    const dx = mx + d.cx * s, dy = my + d.cy * s;
+    ctx.fillRect(dx - 1.2, dy - 1.2, 2.4, 2.4);
   }
 
   // 敌人点（已发现/正在交火）
@@ -2652,6 +3036,7 @@ function updateHUD() {
   f.style.width = (pct * 100).toFixed(1) + '%';
   f.classList.toggle('low', pct < 0.3);
   $('hpTxt').textContent = Math.ceil(p.hp);
+  $('weaponTxt').textContent = (WEAPONS[p.weapon] || WEAPONS.rifle).name;
   $('ammoTxt').textContent = p.mag + ' / ' + p.reserve;
   $('reloadTxt').textContent = p.reloading > 0 ? '换弹…' : '';
   $('floorTxt').textContent = '第 ' + G.floor + ' 层 · 累计 ' + fmtFloors(G.floorsCleared) + ' 层';
@@ -2713,6 +3098,7 @@ resize();
 G = newGame();
 spawnLevel((Math.random() * 1e9) | 0);
 refreshNameUI();
+refreshWeaponUI();
 renderBoard();
 showOverlay('startCard');
 requestAnimationFrame(loop);
@@ -2726,6 +3112,23 @@ window.__CBQ = {
   spawnLevel,
   tile, solid,
   roomAtPoint,
+  // 调试：秒清一个房间 / 查门锁
+  killRoom(idx) {
+    const r = rooms[idx];
+    if (!r) return null;
+    G.enemies.filter(e => e.room === idx && !e.dead).forEach(e => damageEnemy(e, 99999, 0));
+    return { alive: r.alive, cleared: r.cleared };
+  },
+  doorLocked(id) { return doorLocked(doorGroups[id]); },
+  squadInfo() {
+    return G.squads.map(sq => ({
+      id: sq.id, alert: sq.alert,
+      members: sq.members.map(m => ({
+        role: m.squadRole, dead: m.dead, state: m.state,
+        x: Math.round(m.x), y: Math.round(m.y)
+      }))
+    }));
+  },
   // 调试：把玩家放到某个可走格并把相机瞬移过去
   teleport(tx, ty, snapCam) {
     const p = G.player;
