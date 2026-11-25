@@ -126,12 +126,12 @@ button.primary:hover{background:#ffc47d}
 
 <div id="overlay">
   <div class="card" id="startCard">
-    <div class="tag">2D TACTICAL CQB · V2.2</div>
+    <div class="tag">2D TACTICAL CQB · V2.3</div>
     <h1>CBQ<span>室内清除</span></h1>
     <div class="sub">
       每局随机生成一片室内楼层：小房间随机拼合、走廊随机连通，<br>
       房间内用薄墙隔出若干小隔间，<b style="color:#ffb257">敌人只藏在小隔间里</b>。<br>
-      你只有 120° 视野——锥外全黑。清空当前房间的所有隔间，门才会解锁。
+      你只有 90° 视野——锥外全黑。清空当前房间的所有隔间，门才会解锁。
     </div>
     <div class="legend">
       <span><i style="background:#5a6472"></i>办公区</span>
@@ -143,6 +143,7 @@ button.primary:hover{background:#ffc47d}
     </div>
     <div class="nameRow">
       <span>代号</span>
+      <span style="color:var(--acc);letter-spacing:.04em">整活·</span>
       <input id="nameInput" maxlength="10" value="无名特工" autocomplete="off" spellcheck="false">
       <button id="btnSaveName">保存代号</button>
       <span id="nameHint" style="color:#6f7b8a;font-size:11px"></span>
@@ -167,20 +168,21 @@ button.primary:hover{background:#ffc47d}
     </div>
     <div class="btns">
       <button class="primary" id="btnStart">开始突入</button>
-      <button id="btnHow">简报</button>
+      <button id="btnHow">说明</button>
       <button id="btnBoard">排行榜</button>
     </div>
   </div>
 
   <div class="card hidden" id="howCard">
-    <div class="tag">简报</div>
+    <div class="tag">说明</div>
     <h2>对手的规则</h2>
     <div class="sub">
+      · <b style="color:var(--acc)">拐角记得点射压制</b>——进门前先短点几发，别整梭子扫空气。<br>
       · <b>武器</b>：开局选步枪（15 发、精准）或轻机枪（150 发、压制但散布大）。<br>
       · <b>小隔间</b>：每个房间被薄墙隔成 4 个半封闭小隔间，敌人只会在这些小隔间里。<br>
       · <b>门锁</b>：当前房间没清空时，它的所有门锁死（红色挂锁）；清空后自动解锁，并且<b>门会保持敞开</b>，已清空的房间之间不再相互封闭。<b>BOSS 门要全图其他房间都清空才开</b>。<br>
       · <b>增援</b>：从第 2 层开始，随机房间可能藏一支三人小队——没有提示，会保持队形推进，在黑暗中会慢慢回到默认站位。<br>
-      · <b>视野</b>：120° 锥形，锥外全黑；<b>已经清空的房间和门口附近的走廊会完全照亮</b>。视野外和黑暗里的敌人不显示。<br>
+      · <b>视野</b>：90° 锥形，锥外全黑；<b>已经清空的房间和门口附近的走廊会完全照亮</b>。视野外和黑暗里的敌人不显示。<br>
       · <b>卡死救援</b>：卡进墙里 0.3 秒会自动脱出；也可以按 <b>H</b>（或暂停菜单里的按钮）手动脱离。<br>
       · <b>黑暗规则</b>：没察觉你的敌人待在黑暗里就完全静止；你已经暴露的位置会招来追兵，但他们看不见你时不开枪。<br>
       · <b>层数</b>：打倒 1 个 BOSS 算通过 1 层，每层换新地图、敌人更强。死在半路本局结束。<br>
@@ -266,8 +268,8 @@ const WEAPONS = {
   }
 };
 let selectedWeapon = 'rifle';
-// 视野：120° 锥形
-const FOV_DEG = 120;
+// 视野：90° 锥形
+const FOV_DEG = 90;
 const FOV_HALF = FOV_DEG * Math.PI / 360;
 const FOV_RADIUS = 560;            // 锥形可视距离（像素）
 const FOV_NEAR_R = 46;             // 贴身可见半径（兜底，背后也能看到脚边）
@@ -309,6 +311,7 @@ const SAVE_KEY = 'cbq_save_v2';
 const MAX_FLOORS = 9999999;       // 榜单上限
 const BOARD_MAX = 30;             // 最多保留的条目数
 const FLOOR_HEAL = 35;            // 每通过一层恢复的生命
+const NAME_PREFIX = '整活·';       // 所有代号显示时统一加的前缀
 const Save = {
   data: { name: '无名特工', nameSet: false, renamed: false, scores: [] },
   load() {
@@ -346,7 +349,9 @@ const Save = {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) {}
   },
   setName(v, isRename) {
-    const n = String(v || '').trim().slice(0, 10);
+    let n = String(v || '').trim();
+    if (n.startsWith(NAME_PREFIX)) n = n.slice(NAME_PREFIX.length);
+    n = n.slice(0, 10);
     if (!n) return false;
     if (isRename && this.data.renamed) return false;
     this.data.name = n;
@@ -1281,8 +1286,8 @@ function spawnLevel(seed, opts) {
       return;
     }
     if (r.isBoss) {
+      // BOSS 房只放 BOSS
       placeEnemies(r, 1, 'boss', rng, true);
-      placeEnemies(r, 2 + Math.min(2, Math.floor((G.floor - 1) / 3)), 'heavy', rng);
       if (r.total === 0) placeEnemies(r, 1, 'boss', rng, true);
       return;
     }
@@ -1638,11 +1643,11 @@ function refreshNameUI() {
   } else if (!d.renamed) {
     input.disabled = false; btn.disabled = false;
     btn.textContent = '改名（仅 1 次）';
-    hint.textContent = '当前：' + d.name;
+    hint.textContent = '当前：' + NAME_PREFIX + d.name;
   } else {
     input.disabled = true; btn.disabled = true;
     btn.textContent = '代号已锁定';
-    hint.textContent = '已锁定：' + d.name;
+    hint.textContent = '已锁定：' + NAME_PREFIX + d.name;
   }
   $('titleBest').textContent = Save.best() > 0
     ? '本机最高：' + fmtFloors(Save.best()) + ' 层'
@@ -1669,7 +1674,7 @@ function renderBoard() {
   list.innerHTML = scores.map((s, i) =>
     '<div class="boardRow' + (s.name === Save.data.name ? ' me' : '') + '">' +
     '<span class="rank">' + (i + 1) + '</span>' +
-    '<span class="nm">' + escHtml(s.name) + '</span>' +
+    '<span class="nm">' + escHtml(NAME_PREFIX + s.name) + '</span>' +
     '<span class="fl">' + fmtFloors(s.floors) + ' 层</span>' +
     '</div>'
   ).join('');
@@ -1900,9 +1905,10 @@ function damageEnemy(e, dmg) {
       r.alive = Math.max(0, r.alive - 1);
       if (r.alive === 0 && !r.cleared) markRoomCleared(r);
     }
-    if (e.type !== 'boss' && Math.random() < 0.42) {
+    // 每个小兵必定掉弹药；BOSS 不掉落
+    if (e.type !== 'boss') {
       G.pickups.push({
-        x: e.x, y: e.y, kind: Math.random() < 0.5 ? 'hp' : 'ammo',
+        x: e.x, y: e.y, kind: 'ammo',
         bob: Math.random() * TAU, taken: false, drop: true
       });
     }
@@ -2897,7 +2903,7 @@ function drawPlayer(cx, cy, t) {
   ctx.restore();
 }
 
-// ---------------- 视野（120° 锥形 + 墙体遮挡） ----------------
+// ---------------- 视野（90° 锥形 + 墙体遮挡） ----------------
 // 每帧从玩家朝锥形内打 FOV_SAMPLES 条射线，记录到墙的距离；
 // 视锥多边形 = 玩家 + 各射线端点，用于画面开洞和敌人可见性判断。
 function updateVision() {
@@ -2919,7 +2925,7 @@ function updateVision() {
     const d = fov.dist[i] - 1.5;
     poly.push([p.x + Math.cos(a) * d, p.y + Math.sin(a) * d]);
   }
-  // 敌人是否可见：严格按 120° 锥形 + 墙体遮挡判断
+  // 敌人是否可见：严格按 90° 锥形 + 墙体遮挡判断
   for (const e of G.enemies) {
     if (e.dead) { e.visible = true; continue; }
     const ex = e.x - p.x, ey = e.y - p.y;
