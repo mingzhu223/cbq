@@ -126,7 +126,7 @@ button.primary:hover{background:#ffc47d}
 
 <div id="overlay">
   <div class="card" id="startCard">
-    <div class="tag">2D TACTICAL CQB · V2.1</div>
+    <div class="tag">2D TACTICAL CQB · V2.2</div>
     <h1>CBQ<span>室内清除</span></h1>
     <div class="sub">
       每局随机生成一片室内楼层：小房间随机拼合、走廊随机连通，<br>
@@ -178,7 +178,7 @@ button.primary:hover{background:#ffc47d}
     <div class="sub">
       · <b>武器</b>：开局选步枪（15 发、精准）或轻机枪（150 发、压制但散布大）。<br>
       · <b>小隔间</b>：每个房间被薄墙隔成 4 个半封闭小隔间，敌人只会在这些小隔间里。<br>
-      · <b>门锁</b>：当前房间没清空时，它的所有门锁死（红色挂锁）；清空后自动解锁。<b>BOSS 门要全图其他房间都清空才开</b>。<br>
+      · <b>门锁</b>：当前房间没清空时，它的所有门锁死（红色挂锁）；清空后自动解锁，并且<b>门会保持敞开</b>，已清空的房间之间不再相互封闭。<b>BOSS 门要全图其他房间都清空才开</b>。<br>
       · <b>增援</b>：从第 2 层开始，随机房间可能藏一支三人小队——没有提示，会保持队形推进，在黑暗中会慢慢回到默认站位。<br>
       · <b>视野</b>：120° 锥形，锥外全黑；<b>已经清空的房间和门口附近的走廊会完全照亮</b>。视野外和黑暗里的敌人不显示。<br>
       · <b>卡死救援</b>：卡进墙里 0.3 秒会自动脱出；也可以按 <b>H</b>（或暂停菜单里的按钮）手动脱离。<br>
@@ -1772,7 +1772,7 @@ function updateDoors(dt) {
           if (!e.dead && dist(e.x, e.y, cx, cy) < TS * 3) { near = true; break; }
         }
       }
-      if (near) d.timer = 0;
+      if (near || d.latched) d.timer = 0;
       else {
         d.timer += dt;
         if (d.timer > 5 && !doorOverlapsPlayer(d)) { d.open = false; }
@@ -1915,6 +1915,13 @@ function markRoomCleared(r) {
   G.roomsCleared++;
   floats(r.cx * TS, r.cy * TS, '区域已清空', '#7ee08a', 1.6);
   lightCorridorsAround(r);
+  // 清空后门解锁并保持敞开：已清空的房间之间不再相互封闭
+  (r.doorIds || []).forEach(id => {
+    const d = doorGroups[id];
+    if (!d) return;
+    d.latched = true;
+    if (!doorLocked(d)) openDoor(d);
+  });
   if (!r.isBoss && r.alive === 0 && G.roomsCleared >= rooms.length) return;
 }
 // 清空房间后，门口附近的走廊也点亮（BFS 5 格）
@@ -2272,11 +2279,24 @@ function enemyShoot(e, angle) {
 function camX() { return G.camera.x - VIEW.w / 2 + G.camera.sx; }
 function camY() { return G.camera.y - VIEW.h / 2 + G.camera.sy; }
 
+// 兜底：玩家所在房间已清空，但门还没开（或又被关上）就强制打开
+function ensureClearedRoomDoors(p) {
+  const r = roomAtPoint(p.x, p.y);
+  if (!r || !r.cleared) return;
+  for (const id of (r.doorIds || [])) {
+    const d = doorGroups[id];
+    if (!d) continue;
+    d.latched = true;
+    if (!d.open && !doorLocked(d)) openDoor(d);
+  }
+}
+
 function update(dt) {
   const p = G.player;
   G.time += dt; G.frame++;
   updatePlayer(dt);
   updateDoors(dt);
+  ensureClearedRoomDoors(p);
   for (const e of G.enemies) updateEnemy(e, dt);
   // 小队全员冷静下来后，回默认队位
   for (const sq of G.squads) {
