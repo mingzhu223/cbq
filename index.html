@@ -1988,6 +1988,24 @@ function damageEnemy(e, dmg) {
     Sound.ehit();
   }
 }
+// 如果房间内已经没有活着的敌人（有漏网跑到外面/卡在门外），也直接算清空，
+// 避免“房间清空但门锁死”的死局。
+function checkEscapedEnemies() {
+  for (const r of rooms) {
+    if (r.cleared || r.alive <= 0) continue;
+    let inside = 0;
+    for (const e of G.enemies) {
+      if (e.dead || e.room !== r.idx) continue;
+      const tx = Math.floor(e.x / TS), ty = Math.floor(e.y / TS);
+      if (tx >= r.x - 2 && tx < r.x + r.w + 2 && ty >= r.y - 2 && ty < r.y + r.h + 2) { inside++; break; }
+    }
+    if (inside === 0) {
+      r.alive = 0;
+      markRoomCleared(r);
+    }
+  }
+}
+
 function markRoomCleared(r) {
   r.cleared = true;
   G.roomsCleared++;
@@ -2421,6 +2439,7 @@ function update(dt) {
   updateDoors(dt);
   ensureClearedRoomDoors(p);
   for (const e of G.enemies) updateEnemy(e, dt);
+  checkEscapedEnemies();
   // 小队全员冷静下来后，回默认队位
   for (const sq of G.squads) {
     if (sq.alert && squadAllCalm(sq)) sq.alert = false;
