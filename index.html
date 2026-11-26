@@ -109,7 +109,8 @@ button.primary:hover{background:#ffc47d}
 <div id="hud">
   <div class="hud-tl">
     <div class="row"><div class="bar"><i id="hpFill"></i></div><b id="hpTxt">100</b></div>
-    <div class="row"><span id="weaponTxt">步枪</span><b id="ammoTxt">15 / 60</b><span id="reloadTxt" style="color:var(--acc)"></span></div>
+    <div class="row"><span id="weaponTxt">步枪</span><b id="ammoTxt">45 / 180</b><span id="reloadTxt" style="color:var(--acc)"></span></div>
+    <div class="row"><span>翻滚</span><div class="bar" style="width:90px;height:7px"><i id="rollFill" style="background:#8fd0e8"></i></div><span id="rollTxt" style="font-size:10px">就绪</span></div>
   </div>
   <div class="hud-tr">
     <div class="floorTag" id="floorTxt">第 1 层</div>
@@ -120,13 +121,13 @@ button.primary:hover{background:#ffc47d}
   </div>
   <div class="hud-bl">
     <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动 &nbsp; 鼠标 瞄准 &nbsp; 左键 射击<br>
-    <kbd>R</kbd> 换弹 &nbsp; <kbd>H</kbd> 脱离卡死 &nbsp; <kbd>ESC</kbd>/<kbd>P</kbd> 暂停 &nbsp; <kbd>Q</kbd> 退出
+    <kbd>Q</kbd> 翻滚 &nbsp; <kbd>R</kbd> 换弹 &nbsp; <kbd>H</kbd> 脱离卡死 &nbsp; 滚轮 缩放 &nbsp; <kbd>ESC</kbd>/<kbd>P</kbd> 暂停
   </div>
 </div>
 
 <div id="overlay">
   <div class="card" id="startCard">
-    <div class="tag">2D TACTICAL CQB · V2.3</div>
+    <div class="tag">2D TACTICAL CQB · V2.4</div>
     <h1>CBQ<span>室内清除</span></h1>
     <div class="sub">
       每局随机生成一片室内楼层：小房间随机拼合、走廊随机连通，<br>
@@ -151,7 +152,7 @@ button.primary:hover{background:#ffc47d}
     <div class="weaponRow">
       <div class="weaponCard" data-w="rifle">
         <div class="wname">步枪 <span class="wtag">AR</span></div>
-        <div class="wstat">15 发弹匣 · 单发 22 · 精准</div>
+        <div class="wstat">45 发弹匣 · 单发 35 · 精准</div>
       </div>
       <div class="weaponCard" data-w="lmg">
         <div class="wname">轻机枪 <span class="wtag">LMG</span></div>
@@ -162,9 +163,11 @@ button.primary:hover{background:#ffc47d}
     <div class="keys">
       <div class="k">W A S D</div><div class="d">移动（贴墙自动侧滑）</div>
       <div class="k">鼠标 / 左键</div><div class="d">瞄准 / 射击（按住连发）</div>
+      <div class="k">Q</div><div class="d">翻滚闪避（向前 4 格，有无敌帧）</div>
       <div class="k">R</div><div class="d">换弹（打空自动换）</div>
-      <div class="k">ESC / P</div><div class="d">暂停</div>
-      <div class="k">Q</div><div class="d">退出到标题</div>
+      <div class="k">滚轮</div><div class="d">放大 / 缩小视野</div>
+      <div class="k">H</div><div class="d">脱离卡死</div>
+      <div class="k">ESC / P</div><div class="d">暂停（退出也在暂停菜单里）</div>
     </div>
     <div class="btns">
       <button class="primary" id="btnStart">开始突入</button>
@@ -178,15 +181,17 @@ button.primary:hover{background:#ffc47d}
     <h2>对手的规则</h2>
     <div class="sub">
       · <b style="color:var(--acc)">拐角记得点射压制</b>——进门前先短点几发，别整梭子扫空气。<br>
-      · <b>武器</b>：开局选步枪（15 发、精准）或轻机枪（150 发、压制但散布大）。<br>
-      · <b>小隔间</b>：每个房间被薄墙隔成 4 个半封闭小隔间，敌人只会在这些小隔间里。<br>
+      · <b>操作</b>：Q 翻滚闪避（向前 4 格、有无敌帧），鼠标滚轮缩放视野；退出在暂停菜单里。<br>
+      · <b>武器</b>：开局选步枪（45 发、单发 35、精准）或轻机枪（150 发、压制但散布大）。<br>
+      · <b>小隔间</b>：每个房间被薄墙隔成 4 个半封闭小隔间，敌人只会在小隔间里，且主要刷在墙角。<br>
       · <b>门锁</b>：当前房间没清空时，它的所有门锁死（红色挂锁）；清空后自动解锁，并且<b>门会保持敞开</b>，已清空的房间之间不再相互封闭。<b>BOSS 门要全图其他房间都清空才开</b>。<br>
+      · <b>初始房</b>：出生房间安全，不刷敌人，直接算已清空。<br>
       · <b>增援</b>：从第 2 层开始，随机房间可能藏一支三人小队——没有提示，会保持队形推进，在黑暗中会慢慢回到默认站位。<br>
-      · <b>视野</b>：90° 锥形，锥外全黑；<b>已经清空的房间和门口附近的走廊会完全照亮</b>。视野外和黑暗里的敌人不显示。<br>
+      · <b>视野</b>：90° 锥形，锥外全黑；<b>已经清空的房间和门口附近的走廊会完全照亮</b>，未清空区域看过的部分保留微光。视野外和黑暗里的敌人不显示。<br>
       · <b>卡死救援</b>：卡进墙里 0.3 秒会自动脱出；也可以按 <b>H</b>（或暂停菜单里的按钮）手动脱离。<br>
       · <b>黑暗规则</b>：没察觉你的敌人待在黑暗里就完全静止；你已经暴露的位置会招来追兵，但他们看不见你时不开枪。<br>
-      · <b>层数</b>：打倒 1 个 BOSS 算通过 1 层，每层换新地图、敌人更强。死在半路本局结束。<br>
-      · <b>补给</b>：医疗包 +30 血，弹药箱按武器补；敌人也会掉。每通过一层补一点血量与弹药。<br>
+      · <b>层数</b>：打倒 1 个 BOSS 算通过 1 层，每层换新地图、敌人更强，<b>生命上限 +10</b>。<br>
+      · <b>补给</b>：医疗包 +30 血；<b>除 BOSS 外每个敌人必定掉弹药</b>（另有 5% 概率掉血包），BOSS 不掉落。<br>
       · <b>排行榜</b>：只存在本机，记录代号和通过的层数，最多显示 9999999 层。代号有一次改名机会。
     </div>
     <div class="btns"><button class="primary" id="btnBack">返回</button></div>
@@ -199,7 +204,7 @@ button.primary:hover{background:#ffc47d}
     <div class="btns">
       <button class="primary" id="btnResume">继续（ESC）</button>
       <button id="btnUnstuck">脱离卡死（H）</button>
-      <button id="btnQuit">退出到标题（Q）</button>
+      <button id="btnQuit">退出到标题</button>
     </div>
   </div>
 
@@ -246,19 +251,20 @@ button.primary:hover{background:#ffc47d}
 
 // ---------------- 常量 ----------------
 const TS = 28;
-const CELL = 19;                 // 每个格子（房间 + 墙 + 走廊余量）的瓦片数
+const CELL = 27;                 // 每个格子（房间 + 墙 + 走廊余量）的瓦片数（V2.4 房间变大）
 const GRID = 7;                  // 7 x 7 的房间格
 const MAP_W = CELL * GRID, MAP_H = CELL * GRID;
 const WORLD_W = MAP_W * TS, WORLD_H = MAP_H * TS;
 
 const P_SPEED = 224, P_RADIUS = 10;
+const ROLL_TIME = 0.26, ROLL_DIST = 4 * TS, ROLL_CD = 0.9; // 翻滚：4 格，冷却 0.9s
 const MAG_SIZE = 15, RELOAD_TIME = 1.1, FIRE_CD = 0.145, BULLET_DMG = 22; // 兼容旧引用
 const STEPS_PER_FRAME = 1 / 120;
 // 武器：步枪（精准）/ 轻机枪（150 发弹匣、泼水、换弹慢）
 const WEAPONS = {
   rifle: {
     key: 'rifle', name: '步枪', short: 'AR',
-    mag: 15, reserve: 60, reserveMax: 150, ammoPickup: 15, dmg: 22, cd: 0.145, reload: 1.1,
+    mag: 45, reserve: 180, reserveMax: 360, ammoPickup: 20, dmg: 35, cd: 0.145, reload: 1.1,
     spread: 0.018, moveSpread: 0.016, kick: 2.0
   },
   lmg: {
@@ -426,6 +432,7 @@ const Sound = {
   reload() { this.tone(700, 0.03, 0.09, 'square', 680); const t = this; setTimeout(() => t.tone(430, 0.05, 0.11, 'square', 410), 250); },
   empty() { this.tone(230, 0.03, 0.08, 'square', 210); },
   door() { this.noise(0.15, 340, 0.8, 0.11, 'lowpass'); },
+  roll() { this.noise(0.18, 900, 0.5, 0.11, 'bandpass'); this.tone(240, 0.12, 0.07, 'sine', 110); },
   pickup() { this.tone(720, 0.06, 0.1, 'sine', 980); const t = this; setTimeout(() => t.tone(1080, 0.07, 0.09, 'sine', 1260), 55); },
   hitmark() { this.tone(1250, 0.025, 0.05, 'triangle'); },
   win() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => Sound.tone(f, 0.3, 0.13, 'triangle'), i * 130)); },
@@ -465,7 +472,9 @@ function newGame() {
     bossDead: false, bossRoom: -1,
     // 视野
     fov: { dist: new Float32Array(FOV_SAMPLES), poly: [], updated: false },
-    seed: 0, frame: 0
+    seed: 0, frame: 0,
+    zoom: 1,
+    seenTiles: new Set()
   };
 }
 
@@ -589,16 +598,17 @@ function genLevel(seed) {
   const roomList = [];
   nodes.forEach((n, i) => {
     const x0 = n.cx * CELL, y0 = n.cy * CELL;
-    // 房间尺寸随机（内部 9~15 格），居中在 19x19 的格子里
+    // V2.4：房间内部宽 13~21、高 10~23；单边 >=17 的概率 55%
     let w, h;
     if (n === startNode) {
-      w = 13; h = 13;
+      w = 15; h = 13;
     } else if (n === bossNode) {
-      w = 15; h = 15;
+      w = 21; h = 21;
     } else {
-      w = 9 + Math.floor(rng() * 7);
-      h = 9 + Math.floor(rng() * 7);
-      if (w + h > 24) { const cut = (w + h - 24) >> 1; w = Math.max(9, w - cut); h = Math.max(9, h - cut); }
+      w = rng() < 0.55 ? 17 + Math.floor(rng() * 5) : 13 + Math.floor(rng() * 4);
+      h = rng() < 0.55 ? 17 + Math.floor(rng() * 7) : 10 + Math.floor(rng() * 7);
+      w = Math.min(21, Math.max(13, w));
+      h = Math.min(23, Math.max(10, h));
     }
     const rx = x0 + Math.floor((CELL - w) / 2);
     const ry = y0 + Math.floor((CELL - h) / 2);
@@ -1001,6 +1011,16 @@ function moveEntity(e, dx, dy, rad) {
   }
 }
 
+// 分步移动：防止高速（翻滚）穿过薄墙
+function moveEntityStep(e, dx, dy, rad, maxStep) {
+  const d = Math.hypot(dx, dy);
+  if (d < 1e-6) return;
+  const step = maxStep || 5;
+  const n = Math.max(1, Math.ceil(d / step));
+  const sx = dx / n, sy = dy / n;
+  for (let i = 0; i < n; i++) moveEntity(e, sx, sy, rad);
+}
+
 // 卡死救援：在附近找最近的不碰撞点
 function findFreeSpot(x, y, rad, maxR) {
   if (!circleHitsWall(x, y, rad)) return [x, y];
@@ -1187,7 +1207,8 @@ function makePlayer(tx, ty) {
     reserveMax: W.reserveMax, ammoPickup: W.ammoPickup,
     reloadTime: W.reload, reloading: 0, fireCd: 0,
     dmg: W.dmg, fireRate: W.cd, spread: W.spread, moveSpread: W.moveSpread, kickAmt: W.kick,
-    invuln: 0, hurtFx: 0, kick: 0, step: 0, moving: false, hitmark: 0, stuckT: 0
+    invuln: 0, hurtFx: 0, kick: 0, step: 0, moving: false, hitmark: 0, stuckT: 0,
+    rollT: 0, rollCd: 0, rollDx: 1, rollDy: 0
   };
 }
 const ENEMY_TYPES = {
@@ -1209,7 +1230,7 @@ function makeEnemy(tx, ty, type, roomIdx, rng) {
     lastX: 0, lastY: 0, lostT: 0, searchT: 0,
     path: null, pathI: 0, repathT: 0, stuckT: 0, lastPos: { x: 0, y: 0 },
     strafe: (rng ? rng() : Math.random()) < 0.5 ? 1 : -1, strafeT: 0,
-    burst: 0, alertT: 0, step: 0, visible: false
+    burst: 0, alertT: 0, step: 0, visible: false, appearT: 0
   };
 }
 
@@ -1256,12 +1277,13 @@ function spawnLevel(seed, opts) {
   const sr = rooms[startRoom];
   const sp = pickSpawn(sr);
   const p = makePlayer(sp[0], sp[1]);
+  if (opts.maxHp != null) p.maxHp = opts.maxHp;
   if (opts.hp != null) p.hp = clamp(opts.hp, 1, p.maxHp);
   if (opts.reserve != null) p.reserve = clamp(opts.reserve, 0, p.reserveMax);
   G.player = p;
   G.enemies = []; G.pickups = []; G.particles = []; G.tracers = [];
   G.casings = []; G.decals = []; G.floats = []; G.doorFx = [];
-  G.squads = []; G.litCorridors = new Set();
+  G.squads = []; G.litCorridors = new Set(); G.seenTiles = new Set();
   if (!carry) { G.kills = 0; G.shots = 0; G.hits = 0; G.time = 0; }
   G.roomsCleared = 0;
   G.bossDead = false; G.bossRoom = rooms.findIndex(r => r.isBoss);
@@ -1278,11 +1300,9 @@ function spawnLevel(seed, opts) {
   // 布置敌人与补给
   rooms.forEach(r => {
     if (r.idx === startRoom) {
-      // 入口房也放 1-2 个，制造开场紧张感
-      const n = 1 + (rng() < 0.5 ? 1 : 0);
-      placeEnemies(r, n, 'grunt', rng);
-      if (r.total === 0) placeEnemies(r, 1, 'grunt', rng);
+      // V2.4：初始房间不刷敌人，直接算已清空
       r.name = '入口 · 值班室';
+      r.alive = 0; r.total = 0;
       return;
     }
     if (r.isBoss) {
@@ -1323,6 +1343,18 @@ function spawnLevel(seed, opts) {
     }
   }
 
+  // 兜底：万一某个房间没刷出敌人，直接算已清空，避免门永远锁死
+  rooms.forEach(r => {
+    if (r.idx !== startRoom && !r.isBoss && r.alive === 0 && !r.cleared) {
+      r.cleared = true;
+      G.roomsCleared++;
+    }
+  });
+
+  // 入口房安全：标记已清空、点亮周边走廊、开门
+  const startObj = rooms[startRoom];
+  if (startObj && !startObj.cleared) markRoomCleared(startObj);
+
   G.camera.x = p.x; G.camera.y = p.y;
   G.mode = 'menu';
   updateHUD();
@@ -1349,11 +1381,17 @@ function placeEnemies(r, count, type, rng, boss) {
   const used = [];
   const isFree = (x, y) => {
     if (grid[tI(x, y)] !== 1) return false;
-    if (used.some(u => Math.abs(u[0] - x) <= 1 && Math.abs(u[1] - y) <= 1)) return false;
+    if (used.some(u => Math.abs(u[0] - x) <= 2 && Math.abs(u[1] - y) <= 2)) return false;
     if (r.idx === startRoom && G.player &&
       dist2(x * TS, y * TS, G.player.x, G.player.y) < (TS * 5) * (TS * 5)) return false;
     return true;
   };
+  const cornersOf = (leaf) => [
+    [leaf.x + 1, leaf.y + 1],
+    [leaf.x + leaf.w - 2, leaf.y + 1],
+    [leaf.x + 1, leaf.y + leaf.h - 2],
+    [leaf.x + leaf.w - 2, leaf.y + leaf.h - 2]
+  ];
   for (let i = 0; i < count; i++) {
     let pos = null;
     if (boss && type === 'boss') {
@@ -1369,12 +1407,32 @@ function placeEnemies(r, count, type, rng, boss) {
       }
     }
     if (!pos) {
-      // 敌人只在小隔间里生成
-      for (let tries = 0; tries < 140 && !pos; tries++) {
+      // 敌人主要生成在小隔间的墙角，且彼此拉开距离
+      for (let tries = 0; tries < 200 && !pos; tries++) {
+        const leaf = leaves[Math.floor(rng() * leaves.length)];
+        const corner = cornersOf(leaf)[Math.floor(rng() * 4)];
+        const x = corner[0] + Math.floor(rng() * 3) - 1;
+        const y = corner[1] + Math.floor(rng() * 3) - 1;
+        if (x < leaf.x || y < leaf.y || x >= leaf.x + leaf.w || y >= leaf.y + leaf.h) continue;
+        if (isFree(x, y)) pos = [x, y];
+      }
+    }
+    if (!pos) {
+      // 兜底：随便找个可走格
+      for (let tries = 0; tries < 100 && !pos; tries++) {
         const leaf = leaves[Math.floor(rng() * leaves.length)];
         const x = leaf.x + Math.floor(rng() * leaf.w);
         const y = leaf.y + Math.floor(rng() * leaf.h);
         if (isFree(x, y)) pos = [x, y];
+      }
+    }
+    if (!pos) {
+      // 最后兜底：忽略间距，只要有地面（避免房间空着导致永远无法清空）
+      for (let tries = 0; tries < 200 && !pos; tries++) {
+        const leaf = leaves[Math.floor(rng() * leaves.length)];
+        const x = leaf.x + Math.floor(rng() * leaf.w);
+        const y = leaf.y + Math.floor(rng() * leaf.h);
+        if (grid[tI(x, y)] === 1) pos = [x, y];
       }
     }
     if (!pos) continue;
@@ -1463,6 +1521,7 @@ function alertSquad(id, px, py) {
   for (const m of sq.members) {
     if (m.dead) continue;
     m.state = 'chase';
+    m.fireCd = Math.max(m.fireCd, 1.5);
     m.lastX = px; m.lastY = py; m.lostT = 1.2; m.repathT = 0;
   }
 }
@@ -1485,10 +1544,8 @@ window.addEventListener('keydown', e => {
     if (G.mode === 'playing') { pauseGame(); return; }
     if (G.mode === 'paused') { resumeGame(); return; }
   }
-  if (k === 'q') {
-    if (G.mode === 'playing' || G.mode === 'paused') { quitToTitle(); return; }
-  }
   if (G.mode === 'playing') {
+    if (k === 'q') { startRoll(); return; }
     if (k === 'r') startReload();
     if (k === 'h') { unstuckPlayer(false); return; }
     if (k === 'w' || k === 'a' || k === 's' || k === 'd') keys[k] = true;
@@ -1512,6 +1569,13 @@ cv.addEventListener('mousedown', e => {
   Sound.init();
   G.mouseDown = true;
 });
+// 滚轮缩放
+cv.addEventListener('wheel', e => {
+  if (!G) return;
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+  G.zoom = clamp((G.zoom || 1) * factor, 0.7, 1.8);
+}, { passive: false });
 window.addEventListener('mouseup', e => { if (G && e.button === 0) G.mouseDown = false; });
 cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('mouseleave', () => { if (G) G.pointer.inside = false; });
@@ -1541,10 +1605,11 @@ function startRun() {
 }
 function nextFloor() {
   if (!G || G.mode !== 'intermission') return;
-  const hp = Math.min(G.player.maxHp, G.player.hp + FLOOR_HEAL);
+  const newMax = G.player.maxHp + 10; // 每通过一层生命上限 +10
+  const hp = Math.min(newMax, G.player.hp + FLOOR_HEAL);
   const reserve = Math.max(G.player.magSize * 2, G.player.reserve);
   G.floor++;
-  spawnLevel((Math.random() * 1e9) | 0, { carry: true, hp, reserve });
+  spawnLevel((Math.random() * 1e9) | 0, { carry: true, hp, reserve, maxHp: newMax });
   G.mode = 'playing';
   hideOverlay();
   toast('第 ' + G.floor + ' 层 · 种子 ' + G.seed.toString(36).toUpperCase());
@@ -1878,6 +1943,7 @@ function damageEnemy(e, dmg) {
   if (e.dead) return;
   e.hp -= dmg;
   e.flash = 0.14;
+  e.fireCd = Math.max(e.fireCd, 1.5); // 首次还击延迟 1.5 秒
   if (e.squadId != null) alertSquad(e.squadId, G.player.x, G.player.y);
   if (e.state === 'idle' || e.state === 'suspicious') {
     e.state = 'chase';
@@ -1905,12 +1971,18 @@ function damageEnemy(e, dmg) {
       r.alive = Math.max(0, r.alive - 1);
       if (r.alive === 0 && !r.cleared) markRoomCleared(r);
     }
-    // 每个小兵必定掉弹药；BOSS 不掉落
+    // 每个小兵必定掉弹药；另加 5% 概率掉血包；BOSS 不掉落
     if (e.type !== 'boss') {
       G.pickups.push({
         x: e.x, y: e.y, kind: 'ammo',
         bob: Math.random() * TAU, taken: false, drop: true
       });
+      if (Math.random() < 0.05) {
+        G.pickups.push({
+          x: e.x + (Math.random() * 20 - 10), y: e.y + (Math.random() * 20 - 10),
+          kind: 'hp', bob: Math.random() * TAU, taken: false, drop: true
+        });
+      }
     }
   } else {
     Sound.ehit();
@@ -2000,6 +2072,29 @@ function floats(x, y, text, color, life) {
 }
 
 // ---------------- 玩家更新 ----------------
+// ---------------- 玩家更新 ----------------
+function startRoll() {
+  const p = G.player;
+  if (!p || G.mode !== 'playing') return;
+  if (p.rollT > 0 || p.rollCd > 0) return;
+  let dx = 0, dy = 0;
+  if (keys['w']) dy -= 1;
+  if (keys['s']) dy += 1;
+  if (keys['a']) dx -= 1;
+  if (keys['d']) dx += 1;
+  if (!dx && !dy) { dx = Math.cos(p.angle); dy = Math.sin(p.angle); }
+  const l = Math.hypot(dx, dy) || 1;
+  p.rollDx = dx / l; p.rollDy = dy / l;
+  p.rollT = ROLL_TIME;
+  p.rollCd = ROLL_CD;
+  p.invuln = Math.max(p.invuln, ROLL_TIME + 0.1);
+  Sound.roll();
+  // 起步扬尘
+  for (let i = 0; i < 6; i++) {
+    sparks(p.x - p.rollDx * 8, p.y - p.rollDy * 8, '#9aa6b2', 1);
+  }
+}
+
 function updatePlayer(dt) {
   const p = G.player;
   p.fireCd = Math.max(0, p.fireCd - dt);
@@ -2018,24 +2113,38 @@ function updatePlayer(dt) {
     }
   }
 
-  // 瞄准：鼠标世界坐标
+  // 瞄准：鼠标世界坐标（考虑缩放）
   if (G.pointer.inside) {
-    const wx = G.pointer.x + camX(), wy = G.pointer.y + camY();
+    const z = G.zoom || 1;
+    const wx = G.pointer.x / z + camX(), wy = G.pointer.y / z + camY();
     p.angle = Math.atan2(wy - p.y, wx - p.x);
   }
 
   // 移动
+  p.rollCd = Math.max(0, p.rollCd - dt);
   let mx = 0, my = 0;
   if (keys['w']) my -= 1;
   if (keys['s']) my += 1;
   if (keys['a']) mx -= 1;
   if (keys['d']) mx += 1;
+  const rolling = p.rollT > 0;
   const moving = mx !== 0 || my !== 0;
-  p.moving = moving;
-  if (moving) {
+  p.moving = moving || rolling;
+  if (rolling) {
+    const speed = ROLL_DIST / ROLL_TIME;
+    moveEntityStep(p, p.rollDx * speed * dt, p.rollDy * speed * dt, p.r, 5);
+    p.rollT -= dt;
+    if (Math.random() < 0.5) {
+      G.particles.push({
+        x: p.x - p.rollDx * 8, y: p.y - p.rollDy * 8,
+        vx: -p.rollDx * 30, vy: -p.rollDy * 30,
+        t: 0, life: 0.25, color: '#8b97a6', size: 2
+      });
+    }
+  } else if (moving) {
     const l = Math.hypot(mx, my);
     mx /= l; my /= l;
-    moveEntity(p, mx * P_SPEED * dt, my * P_SPEED * dt, p.r);
+    moveEntityStep(p, mx * P_SPEED * dt, my * P_SPEED * dt, p.r, 6);
     p.step += P_SPEED * dt;
   }
 
@@ -2047,7 +2156,7 @@ function updatePlayer(dt) {
     p.stuckT = 0;
   }
 
-  if (G.mouseDown) {
+  if (G.mouseDown && !rolling) {
     if (!p.reloading && p.mag > 0) fire();
     else if (p.mag <= 0) fire(); // 空仓时会自动触发换弹
   }
@@ -2080,7 +2189,7 @@ function updateEnemy(e, dt) {
   const dP = Math.hypot(dx, dy);
   const canSee = dP < e.vision && Math.abs(angDiff(Math.atan2(dy, dx), e.aim)) < 1.35 &&
     hasLOS(e.x, e.y, p.x, p.y);
-  const senseClose = dP < 60 && hasLOS(e.x, e.y, p.x, p.y);
+  const senseClose = dP < TS * 5 && hasLOS(e.x, e.y, p.x, p.y);
 
   // ---- 增援小队行为 ----
   if (e.squadId != null) {
@@ -2113,6 +2222,7 @@ function updateEnemy(e, dt) {
   if (!e.visible && (e.state === 'idle' || e.state === 'suspicious')) {
     if (canSee || senseClose) {
       e.state = 'chase'; e.alertT = 1.2;
+      e.fireCd = Math.max(e.fireCd, 1.5);
       if (e.type !== 'boss') floats(e.x, e.y - e.r - 8, '!', '#ff7a5c', 0.7);
       e.repathT = 0; e.lostT = 1.0;
       e.lastX = p.x; e.lastY = p.y;
@@ -2126,6 +2236,7 @@ function updateEnemy(e, dt) {
   if (canSee || senseClose) {
     if (e.state !== 'chase') {
       e.state = 'chase'; e.alertT = 1.2;
+      e.fireCd = Math.max(e.fireCd, 1.5);
       if (e.type !== 'boss') floats(e.x, e.y - e.r - 8, '!', '#ff7a5c', 0.7);
       e.repathT = 0;
     }
@@ -2282,8 +2393,14 @@ function enemyShoot(e, angle) {
 }
 
 // ---------------- 更新循环 ----------------
-function camX() { return G.camera.x - VIEW.w / 2 + G.camera.sx; }
-function camY() { return G.camera.y - VIEW.h / 2 + G.camera.sy; }
+function camX() {
+  const z = G.zoom || 1;
+  return G.camera.x - VIEW.w / (2 * z) + G.camera.sx / z;
+}
+function camY() {
+  const z = G.zoom || 1;
+  return G.camera.y - VIEW.h / (2 * z) + G.camera.sy / z;
+}
 
 // 兜底：玩家所在房间已清空，但门还没开（或又被关上）就强制打开
 function ensureClearedRoomDoors(p) {
@@ -2369,13 +2486,18 @@ function draw() {
   ctx.fillStyle = '#07090c';
   ctx.fillRect(0, 0, W, H);
   if (!G) return;
+  const z = G.zoom || 1;
   const cx = camX(), cy = camY();
   const t = G.time;
 
   const x0 = Math.max(0, Math.floor(cx / TS) - 1);
   const y0 = Math.max(0, Math.floor(cy / TS) - 1);
-  const x1 = Math.min(MAP_W - 1, Math.floor((cx + W) / TS) + 1);
-  const y1 = Math.min(MAP_H - 1, Math.floor((cy + H) / TS) + 1);
+  const x1 = Math.min(MAP_W - 1, Math.floor((cx + W / z) / TS) + 1);
+  const y1 = Math.min(MAP_H - 1, Math.floor((cy + H / z) / TS) + 1);
+
+  // 世界层按缩放绘制
+  ctx.save();
+  ctx.scale(z, z);
 
   // 地面
   for (let y = y0; y <= y1; y++) {
@@ -2442,8 +2564,8 @@ function draw() {
 
   // 门
   for (const d of doorGroups) {
-    if (d.cx * TS < cx - 80 || d.cx * TS > cx + W + 80) continue;
-    if (d.cy * TS < cy - 80 || d.cy * TS > cy + H + 80) continue;
+    if (d.cx * TS < cx - 80 || d.cx * TS > cx + W / z + 80) continue;
+    if (d.cy * TS < cy - 80 || d.cy * TS > cy + H / z + 80) continue;
     drawDoor(d, cx, cy);
   }
 
@@ -2537,6 +2659,7 @@ function draw() {
   }
 
   // 视野黑暗遮罩（锥外全黑，锥内随距离渐暗）
+  ctx.restore();
   drawFOVMask(cx, cy);
   drawCrosshair(cx, cy);
   drawMinimap();
@@ -2822,7 +2945,8 @@ function drawEnemy(e, cx, cy, t) {
     ctx.globalAlpha = 1;
     return;
   }
-  if (dim) ctx.globalAlpha = 0.22;
+  const fade = Math.min(1, e.appearT == null ? 1 : e.appearT);
+  ctx.globalAlpha = (dim ? 0.22 : 1) * fade;
   const chase = e.state === 'chase';
   if (chase && !dim) {
     const vr = e.vision * 0.7;
@@ -2877,6 +3001,15 @@ function drawEnemy(e, cx, cy, t) {
 function drawPlayer(cx, cy, t) {
   const p = G.player;
   const x = p.x - cx, y = p.y - cy;
+  // 翻滚残影
+  if (p.rollT > 0) {
+    for (let i = 1; i <= 4; i++) {
+      ctx.fillStyle = 'rgba(124,192,216,' + (0.18 - i * 0.035).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(x - p.rollDx * i * 9, y - p.rollDy * i * 9, p.r * (1 - i * 0.12), 0, TAU);
+      ctx.fill();
+    }
+  }
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.beginPath(); ctx.ellipse(x + 2, y + 5, p.r * 1.15, p.r * 0.6, 0, 0, TAU); ctx.fill();
   const hurt = p.invuln > 0 && Math.floor(t * 40) % 2 === 0;
@@ -2906,6 +3039,32 @@ function drawPlayer(cx, cy, t) {
 // ---------------- 视野（90° 锥形 + 墙体遮挡） ----------------
 // 每帧从玩家朝锥形内打 FOV_SAMPLES 条射线，记录到墙的距离；
 // 视锥多边形 = 玩家 + 各射线端点，用于画面开洞和敌人可见性判断。
+// 看过的格子记进 seenTiles，未清空房间里保持微光记忆。
+function markSeenTiles() {
+  const p = G.player, fov = G.fov;
+  if (!G.seenTiles) G.seenTiles = new Set();
+  const base = p.angle - FOV_HALF;
+  const step = (FOV_HALF * 2) / (FOV_SAMPLES - 1);
+  const stride = TS * 0.8;
+  for (let i = 0; i < FOV_SAMPLES; i += 2) {
+    const a = base + step * i;
+    const dx = Math.cos(a), dy = Math.sin(a);
+    const d = fov.dist[i];
+    for (let t = 0; t <= d; t += stride) {
+      const tx = Math.floor((p.x + dx * t) / TS);
+      const ty = Math.floor((p.y + dy * t) / TS);
+      if (inMap(tx, ty)) G.seenTiles.add(ty * MAP_W + tx);
+    }
+  }
+  // 脚边一圈
+  const px = Math.floor(p.x / TS), py = Math.floor(p.y / TS);
+  for (let oy = -1; oy <= 1; oy++) {
+    for (let ox = -1; ox <= 1; ox++) {
+      const tx = px + ox, ty = py + oy;
+      if (inMap(tx, ty)) G.seenTiles.add(ty * MAP_W + tx);
+    }
+  }
+}
 function updateVision() {
   const p = G.player;
   const fov = G.fov;
@@ -2925,11 +3084,12 @@ function updateVision() {
     const d = fov.dist[i] - 1.5;
     poly.push([p.x + Math.cos(a) * d, p.y + Math.sin(a) * d]);
   }
-  // 敌人是否可见：严格按 90° 锥形 + 墙体遮挡判断
+  // 敌人是否可见：严格按 90° 锥形 + 墙体遮挡判断；贴脸/重合时强制可见
   for (const e of G.enemies) {
     if (e.dead) { e.visible = true; continue; }
     const ex = e.x - p.x, ey = e.y - p.y;
     const d = Math.hypot(ex, ey);
+    if (d < p.r + e.r + 26) { e.visible = true; continue; }
     const enemyAngle = Math.atan2(ey, ex);
     const diff = Math.abs(angDiff(enemyAngle, p.angle));
     if (diff <= FOV_HALF) {
@@ -2945,7 +3105,12 @@ function updateVision() {
       // 锥外：完全不可见，溶进黑暗
       e.visible = false;
     }
+    // 出现时淡入，避免突然“后刷”的观感
+    if (e.visible) e.appearT = Math.min(1, (e.appearT || 0) + 0.08);
+    else e.appearT = 0;
   }
+  // 记录看过的区域（降低频率，避免每帧刷）
+  if (G.frame % 6 === 0) markSeenTiles();
   fov.updated = true;
 }
 
@@ -2955,8 +3120,10 @@ function drawFOVMask(cx, cy) {
   const fov = G.fov;
   if (!fov || !fov.poly.length || !fov.updated) return;
   const W = VIEW.w, H = VIEW.h;
-  const px = p.x - cx, py = p.y - cy;
-  const R = FOV_RADIUS;
+  const z = G.zoom || 1;
+  const px = (p.x - cx) * z, py = (p.y - cy) * z;
+  const R = FOV_RADIUS * z;
+  const nearR = FOV_NEAR_R * z;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
   if (darkCv.width !== cv.width || darkCv.height !== cv.height) {
@@ -2972,13 +3139,13 @@ function drawFOVMask(cx, cy) {
 
   dctx.globalCompositeOperation = 'destination-out';
   dctx.beginPath();
-  dctx.arc(px, py, FOV_NEAR_R, 0, TAU);
+  dctx.arc(px, py, nearR, 0, TAU);
   dctx.moveTo(px, py);
   for (let i = 0; i < fov.poly.length; i++) {
-    dctx.lineTo(fov.poly[i][0] - cx, fov.poly[i][1] - cy);
+    dctx.lineTo((fov.poly[i][0] - cx) * z, (fov.poly[i][1] - cy) * z);
   }
   dctx.closePath();
-  const hole = dctx.createRadialGradient(px, py, FOV_NEAR_R * 0.5, px, py, R);
+  const hole = dctx.createRadialGradient(px, py, nearR * 0.5, px, py, R);
   hole.addColorStop(0, 'rgba(255,255,255,1)');
   hole.addColorStop(0.55, 'rgba(255,255,255,1)');
   hole.addColorStop(0.8, 'rgba(255,255,255,0.85)');
@@ -2991,27 +3158,36 @@ function drawFOVMask(cx, cy) {
   dctx.fillStyle = 'rgba(255,255,255,1)';
   for (const r of rooms) {
     if (!r.cleared) continue;
-    dctx.fillRect(r.x * TS - cx, r.y * TS - cy, r.w * TS, r.h * TS);
+    dctx.fillRect((r.x * TS - cx) * z, (r.y * TS - cy) * z, r.w * TS * z, r.h * TS * z);
   }
 
   // ---- 1.6) 清空房间周边的走廊也点亮 ----
   if (G.litCorridors && G.litCorridors.size) {
     for (const k of G.litCorridors) {
       const tx2 = k % MAP_W, ty2 = (k / MAP_W) | 0;
-      dctx.fillRect(tx2 * TS - cx, ty2 * TS - cy, TS, TS);
+      dctx.fillRect((tx2 * TS - cx) * z, (ty2 * TS - cy) * z, TS * z, TS * z);
+    }
+  }
+
+  // ---- 1.7) 检查过的区域保留微光（未清空房间的记忆） ----
+  if (G.seenTiles && G.seenTiles.size) {
+    dctx.fillStyle = 'rgba(255,255,255,0.55)';
+    for (const k of G.seenTiles) {
+      const tx2 = k % MAP_W, ty2 = (k / MAP_W) | 0;
+      dctx.fillRect((tx2 * TS - cx) * z, (ty2 * TS - cy) * z, TS * z, TS * z);
     }
   }
 
   // ---- 2) 锥内轻暖光，让「被照亮」的感觉更明确 ----
   dctx.globalCompositeOperation = 'lighter';
   dctx.beginPath();
-  dctx.arc(px, py, FOV_NEAR_R, 0, TAU);
+  dctx.arc(px, py, nearR, 0, TAU);
   dctx.moveTo(px, py);
   for (let i = 0; i < fov.poly.length; i++) {
-    dctx.lineTo(fov.poly[i][0] - cx, fov.poly[i][1] - cy);
+    dctx.lineTo((fov.poly[i][0] - cx) * z, (fov.poly[i][1] - cy) * z);
   }
   dctx.closePath();
-  const tint = dctx.createRadialGradient(px, py, FOV_NEAR_R, px, py, R);
+  const tint = dctx.createRadialGradient(px, py, nearR, px, py, R);
   tint.addColorStop(0, 'rgba(120,140,150,0.20)');
   tint.addColorStop(0.55, 'rgba(90,108,120,0.15)');
   tint.addColorStop(0.85, 'rgba(50,62,72,0.06)');
@@ -3031,8 +3207,8 @@ function drawFOVMask(cx, cy) {
   ctx.globalCompositeOperation = 'lighter';
   for (const r of rooms) {
     if (!r.cleared) continue;
-    const rx = r.x * TS - cx, ry = r.y * TS - cy;
-    const rw = r.w * TS, rh = r.h * TS;
+    const rx = (r.x * TS - cx) * z, ry = (r.y * TS - cy) * z;
+    const rw = r.w * TS * z, rh = r.h * TS * z;
     if (rx > W || ry > H || rx + rw < 0 || ry + rh < 0) continue;
     const lg = ctx.createRadialGradient(rx + rw / 2, ry + rh / 2, Math.min(rw, rh) * 0.2,
       rx + rw / 2, ry + rh / 2, Math.max(rw, rh) * 0.65);
@@ -3046,7 +3222,7 @@ function drawFOVMask(cx, cy) {
     ctx.fillStyle = 'rgba(70,84,96,0.07)';
     for (const k of G.litCorridors) {
       const tx2 = k % MAP_W, ty2 = (k / MAP_W) | 0;
-      ctx.fillRect(tx2 * TS - cx, ty2 * TS - cy, TS, TS);
+      ctx.fillRect((tx2 * TS - cx) * z, (ty2 * TS - cy) * z, TS * z, TS * z);
     }
   }
   ctx.restore();
@@ -3058,7 +3234,7 @@ function drawFOVMask(cx, cy) {
   ctx.beginPath();
   ctx.moveTo(px, py);
   for (let i = 0; i < fov.poly.length; i++) {
-    ctx.lineTo(fov.poly[i][0] - cx, fov.poly[i][1] - cy);
+    ctx.lineTo((fov.poly[i][0] - cx) * z, (fov.poly[i][1] - cy) * z);
   }
   ctx.closePath();
   ctx.strokeStyle = 'rgba(110,150,180,0.09)';
@@ -3198,6 +3374,9 @@ function updateHUD() {
   $('weaponTxt').textContent = (WEAPONS[p.weapon] || WEAPONS.rifle).name;
   $('ammoTxt').textContent = p.mag + ' / ' + p.reserve;
   $('reloadTxt').textContent = p.reloading > 0 ? '换弹…' : '';
+  const rollPct = 1 - clamp(p.rollCd / ROLL_CD, 0, 1);
+  $('rollFill').style.width = (rollPct * 100).toFixed(0) + '%';
+  $('rollTxt').textContent = p.rollT > 0 ? '翻滚中' : (p.rollCd > 0 ? '冷却' : '就绪');
   $('floorTxt').textContent = '第 ' + G.floor + ' 层 · 累计 ' + fmtFloors(G.floorsCleared) + ' 层';
   const r = roomAtPoint(p.x, p.y);
   if (r) {
