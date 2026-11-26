@@ -36,6 +36,10 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:c
   border:1px solid var(--line);border-radius:2px;color:#aab6c4;font-size:10px}
 #flash{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .28s;
   background:radial-gradient(ellipse at center,rgba(255,0,0,0) 30%,rgba(255,20,10,.5) 100%)}
+.hudPause{position:absolute;right:20px;bottom:16px;pointer-events:auto;font-family:var(--mono);
+  font-size:11px;letter-spacing:.1em;padding:8px 12px;background:rgba(10,13,18,.82);
+  border:1px solid var(--line);color:var(--txt);border-radius:3px;cursor:pointer;transition:.15s}
+.hudPause:hover{border-color:var(--acc);background:rgba(255,255,255,.07)}
 #toast{position:fixed;left:50%;top:74px;transform:translateX(-50%);font-size:13px;letter-spacing:.12em;
   color:var(--acc);background:rgba(10,13,18,.82);border:1px solid var(--line);padding:8px 18px;
   border-radius:3px;opacity:0;transition:opacity .3s;pointer-events:none}
@@ -109,7 +113,7 @@ button.primary:hover{background:#ffc47d}
 <div id="hud">
   <div class="hud-tl">
     <div class="row"><div class="bar"><i id="hpFill"></i></div><b id="hpTxt">100</b></div>
-    <div class="row"><span id="weaponTxt">步枪</span><b id="ammoTxt">45 / 180</b><span id="reloadTxt" style="color:var(--acc)"></span></div>
+    <div class="row"><span id="weaponTxt">步枪</span><b id="ammoTxt">45 / 360</b><span id="reloadTxt" style="color:var(--acc)"></span></div>
     <div class="row"><span>翻滚</span><div class="bar" style="width:90px;height:7px"><i id="rollFill" style="background:#8fd0e8"></i></div><span id="rollTxt" style="font-size:10px">就绪</span></div>
   </div>
   <div class="hud-tr">
@@ -121,13 +125,14 @@ button.primary:hover{background:#ffc47d}
   </div>
   <div class="hud-bl">
     <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动 &nbsp; 鼠标 瞄准 &nbsp; 左键 射击<br>
-    <kbd>Q</kbd> 翻滚 &nbsp; <kbd>R</kbd> 换弹 &nbsp; <kbd>H</kbd> 脱离卡死 &nbsp; 滚轮 缩放 &nbsp; <kbd>ESC</kbd>/<kbd>P</kbd> 暂停
+    <kbd>E</kbd> 翻滚 &nbsp; <kbd>R</kbd> 换弹 &nbsp; <kbd>H</kbd> 脱离卡死 &nbsp; 滚轮 缩放 &nbsp; <kbd>ESC</kbd>/<kbd>P</kbd> 暂停
   </div>
+  <button id="btnPauseHud" class="hudPause">Ⅱ 暂停</button>
 </div>
 
 <div id="overlay">
   <div class="card" id="startCard">
-    <div class="tag">2D TACTICAL CQB · V2.4</div>
+    <div class="tag">2D TACTICAL CQB · V2.5</div>
     <h1>CBQ<span>室内清除</span></h1>
     <div class="sub">
       每局随机生成一片室内楼层：小房间随机拼合、走廊随机连通，<br>
@@ -163,7 +168,7 @@ button.primary:hover{background:#ffc47d}
     <div class="keys">
       <div class="k">W A S D</div><div class="d">移动（贴墙自动侧滑）</div>
       <div class="k">鼠标 / 左键</div><div class="d">瞄准 / 射击（按住连发）</div>
-      <div class="k">Q</div><div class="d">翻滚闪避（向前 4 格，有无敌帧）</div>
+      <div class="k">E</div><div class="d">翻滚闪避（向前 4 格，有无敌帧）</div>
       <div class="k">R</div><div class="d">换弹（打空自动换）</div>
       <div class="k">滚轮</div><div class="d">放大 / 缩小视野</div>
       <div class="k">H</div><div class="d">脱离卡死</div>
@@ -181,7 +186,7 @@ button.primary:hover{background:#ffc47d}
     <h2>对手的规则</h2>
     <div class="sub">
       · <b style="color:var(--acc)">拐角记得点射压制</b>——进门前先短点几发，别整梭子扫空气。<br>
-      · <b>操作</b>：Q 翻滚闪避（向前 4 格、有无敌帧），鼠标滚轮缩放视野；退出在暂停菜单里。<br>
+      · <b>操作</b>：E 翻滚闪避（向前 4 格、有无敌帧），鼠标滚轮缩放视野；退出在暂停菜单里，ESC 失效时点右下角「暂停」。<br>
       · <b>武器</b>：开局选步枪（45 发、单发 35、精准）或轻机枪（150 发、压制但散布大）。<br>
       · <b>小隔间</b>：每个房间被薄墙隔成 4 个半封闭小隔间，敌人只会在小隔间里，且主要刷在墙角。<br>
       · <b>门锁</b>：当前房间没清空时，它的所有门锁死（红色挂锁）；清空后自动解锁，并且<b>门会保持敞开</b>，已清空的房间之间不再相互封闭。<b>BOSS 门要全图其他房间都清空才开</b>。<br>
@@ -264,7 +269,7 @@ const STEPS_PER_FRAME = 1 / 120;
 const WEAPONS = {
   rifle: {
     key: 'rifle', name: '步枪', short: 'AR',
-    mag: 45, reserve: 180, reserveMax: 360, ammoPickup: 20, dmg: 35, cd: 0.145, reload: 1.1,
+    mag: 45, reserve: 360, reserveMax: 720, ammoPickup: 20, dmg: 35, cd: 0.145, reload: 1.1,
     spread: 0.018, moveSpread: 0.016, kick: 2.0
   },
   lmg: {
@@ -1080,7 +1085,17 @@ function rayCastSolid(ox, oy, dx, dy, maxT) {
     if (tMaxX < tMaxY) { t = tMaxX; mapX += stepX; tMaxX += tDeltaX; }
     else { t = tMaxY; mapY += stepY; tMaxY += tDeltaY; }
     if (t > maxT) return maxT;
-    if (solid(mapX, mapY)) return Math.max(0, t);
+    if (solid(mapX, mapY)) {
+      // 角缝规则：只有贴着方块角、且角前方是空的（两格对角、另一个对角空着）才放行
+      const hx = ox + dx * t, hy = oy + dy * t;
+      const cornerX = Math.round(hx / TS) * TS, cornerY = Math.round(hy / TS) * TS;
+      const cornerDist = Math.hypot(hx - cornerX, hy - cornerY);
+      const aheadX = hx + dx * 3, aheadY = hy + dy * 3;
+      if (cornerDist <= 2.5 && !solid(Math.floor(aheadX / TS), Math.floor(aheadY / TS))) {
+        continue;
+      }
+      return Math.max(0, t);
+    }
   }
   return maxT;
 }
@@ -1091,8 +1106,16 @@ function firstSolidTile(ax, ay, bx, by) {
   const dx = (bx - ax) / d, dy = (by - ay) / d;
   return rayCastSolid(ax, ay, dx, dy, d) < d - 0.01;
 }
-function rayCircle(ox, oy, dx, dy, cx, cy, cr) {
-  const fx = ox - cx, fy = oy - cy;
+// 点到线段距离（子弹擦身索敌用）
+function distPointSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  let t = len2 > 0 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+  t = clamp(t, 0, 1);
+  const nx = ax + dx * t, ny = ay + dy * t;
+  return Math.hypot(px - nx, py - ny);
+}
+function rayCircle(ox, oy, dx, dy, cx, cy, cr) {  const fx = ox - cx, fy = oy - cy;
   const b = 2 * (fx * dx + fy * dy);
   const c = fx * fx + fy * fy - cr * cr;
   const disc = b * b - 4 * c;
@@ -1536,16 +1559,21 @@ function squadAllCalm(sq) {
 const $ = id => document.getElementById(id);
 const keys = {};
 
+// ESC 在不同系统/输入法下 e.key 可能是 Escape / Esc，或无 key 只有 keyCode
+function isEscapeKey(e) {
+  return e.key === 'Escape' || e.key === 'Esc' || e.code === 'Escape' || e.keyCode === 27;
+}
 window.addEventListener('keydown', e => {
-  const k = e.key.toLowerCase();
-  if (k === 'escape' || k === ' ') e.preventDefault();
+  const esc = isEscapeKey(e);
+  const k = (e.key || '').toLowerCase();
+  if (esc || k === ' ') e.preventDefault();
   if (!G) return;
-  if (k === 'escape' || k === 'p') {
+  if (esc || k === 'p') {
     if (G.mode === 'playing') { pauseGame(); return; }
     if (G.mode === 'paused') { resumeGame(); return; }
   }
   if (G.mode === 'playing') {
-    if (k === 'q') { startRoll(); return; }
+    if (k === 'e') { startRoll(); return; }
     if (k === 'r') startReload();
     if (k === 'h') { unstuckPlayer(false); return; }
     if (k === 'w' || k === 'a' || k === 's' || k === 'd') keys[k] = true;
@@ -1750,6 +1778,7 @@ $('btnStart').onclick = startRun;
 $('btnHow').onclick = () => showOverlay('howCard');
 $('btnBack').onclick = () => { refreshNameUI(); refreshWeaponUI(); showOverlay('startCard'); };
 $('btnResume').onclick = resumeGame;
+$('btnPauseHud').onclick = () => { if (G && G.mode === 'playing') pauseGame(); };
 $('btnUnstuck').onclick = () => { unstuckPlayer(false); resumeGame(); };
 $('btnQuit').onclick = quitToTitle;
 $('btnAgain').onclick = startRun;
@@ -1910,6 +1939,16 @@ function fire() {
   } else {
     sparks(ex, ey, '#cfc7b6', 4);
     addDecal(ex, ey, 2.4, 'spark', 0.8);
+  }
+  // 子弹擦过敌人 1 格内：自动索敌（不必命中）
+  for (const e of G.enemies) {
+    if (e.dead || e.state === 'chase') continue;
+    if (distPointSegment(e.x, e.y, mx, my, ex, ey) < TS) {
+      e.state = 'chase';
+      e.fireCd = Math.max(e.fireCd, 1.5);
+      e.lastX = p.x; e.lastY = p.y; e.lostT = 1.2;
+      if (e.squadId != null) alertSquad(e.squadId, p.x, p.y);
+    }
   }
   // 枪声开门 + 惊动
   const pr = roomAtPoint(p.x, p.y);
@@ -2953,6 +2992,7 @@ function drawEnemy(e, cx, cy, t) {
   // 视野外：完全融入黑暗（死亡痕迹除外，它已经黑了）
   if (!e.dead && !e.visible) return;
   const dim = e.visible === 'dim';
+  const mem = e.visible === 'memory';
   if (e.dead) {
     const a = clamp(1 - e.deadT / 1.6, 0, 1);
     if (a <= 0) return;
@@ -2965,7 +3005,7 @@ function drawEnemy(e, cx, cy, t) {
     return;
   }
   const fade = Math.min(1, e.appearT == null ? 1 : e.appearT);
-  ctx.globalAlpha = (dim ? 0.22 : 1) * fade;
+  ctx.globalAlpha = (dim ? 0.22 : 1) * (mem ? 0.62 : 1) * fade;
   const chase = e.state === 'chase';
   if (chase && !dim) {
     const vr = e.vision * 0.7;
@@ -3123,6 +3163,11 @@ function updateVision() {
     } else {
       // 锥外：完全不可见，溶进黑暗
       e.visible = false;
+    }
+    // 已经探索/照亮过的区域：敌人保持可见，避免看起来像“在探索过的地方刷新”
+    if (!e.visible && G.seenTiles) {
+      const tx = Math.floor(e.x / TS), ty = Math.floor(e.y / TS);
+      if (G.seenTiles.has(ty * MAP_W + tx)) e.visible = 'memory';
     }
     // 出现时淡入，避免突然“后刷”的观感
     if (e.visible) e.appearT = Math.min(1, (e.appearT || 0) + 0.08);
@@ -3473,6 +3518,9 @@ window.__CBQ = {
   spawnLevel,
   tile, solid,
   roomAtPoint,
+  ray(ox, oy, angle, maxT) {
+    return rayCastSolid(ox, oy, Math.cos(angle), Math.sin(angle), maxT || 900);
+  },
   // 调试：秒清一个房间 / 查门锁
   killRoom(idx) {
     const r = rooms[idx];
