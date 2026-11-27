@@ -133,7 +133,7 @@ button.primary:hover{background:#ffc47d}
 
 <div id="overlay">
   <div class="card" id="startCard">
-    <div class="tag">2D TACTICAL CQB · V2.6</div>
+    <div class="tag">2D TACTICAL CQB · V2.7</div>
     <h1>咕？CBQ<span>室内清除</span></h1>
     <div class="sub">
       每局随机生成一片室内楼层：小房间随机拼合、走廊随机连通，<br>
@@ -172,7 +172,7 @@ button.primary:hover{background:#ffc47d}
       <div class="k">鼠标右键</div><div class="d">翻滚闪避（向前 4 格，有无敌帧）</div>
       <div class="k">R</div><div class="d">换弹（打空自动换）</div>
       <div class="k">滚轮</div><div class="d">放大 / 缩小视野</div>
-      <div class="k">H</div><div class="d">脱离卡死</div>
+      <div class="k">H</div><div class="d">脱离卡死（主动用会回入口房）</div>
       <div class="k">ESC / P</div><div class="d">暂停（退出也在暂停菜单里）</div>
     </div>
     <div class="btns">
@@ -192,11 +192,11 @@ button.primary:hover{background:#ffc47d}
       · <b>小隔间</b>：每个房间被薄墙随机切成 2~8 个半封闭小隔间（每局、每间都不一样），敌人只会在小隔间里，且主要刷在墙角；门口 2 格一定是空的。<br>
       · <b>门锁</b>：当前房间没清空时，它的所有门锁死（红色挂锁）；清空后自动解锁，并且<b>门会保持敞开</b>，已清空的房间之间不再相互封闭。门口 2 格内不会有薄墙或掩体挡路。<b>BOSS 门改成钥匙制</b>：每层 3 个敌人身上带钥匙，集齐 3 把自动解锁；实在找不齐就把所有房间清空，BOSS 门也会强制打开。<br>
       · <b>初始房</b>：出生房间安全，不刷敌人，直接算已清空。<br>
-      · <b>增援</b>：从第 2 层开始，随机房间可能藏一支三人小队——没有提示，会保持队形推进，在黑暗中会慢慢回到默认站位。<br>
+      · <b>增援</b>：从第 2 层开始，随机房间可能藏一支<b style="color:#7ddc86">绿色</b>三人小队——队长站在最前面（头顶亮绿三角），剩下两名跟在后方左右；没有提示，会在黑暗中慢慢回到队位。<b>队长一死，队员狂暴</b>：攻速 +30%、移速 +30%，并开始绕着你转。<br>
       · <b>敌人</b>：普通兵 50 血 / 9 伤，小紫（紫色精英）90 血 / 13 伤，BOSS 350 血 / 21 伤（只有 5% 概率三连击）。所有敌人发现你后 0.5 秒开第一枪，之后每 0.7~1.1 秒一发。<br>
       · <b>BOSS 房</b>：BOSS 身边必定跟着两只小紫。<br>
       · <b>视野</b>：90° 锥形，锥外全黑；<b>已经清空的房间和门口附近的走廊会完全照亮</b>，未清空区域看过的部分保留微光。视野外和黑暗里的敌人不显示。<br>
-      · <b>卡死救援</b>：卡进墙里 0.3 秒会自动脱出；也可以按 <b>H</b>（或暂停菜单里的按钮）手动脱离。<br>
+      · <b>卡死救援</b>：卡进墙里 0.3 秒会自动脱出。<b>主动按 H（或暂停菜单的按钮）会直接回到入口房</b>：原来那间房要是没清完，会重置回开局状态（敌人按原样复活、门重新锁上）；已经清空的房间不受影响。<br>
       · <b>黑暗规则</b>：没察觉你的敌人待在黑暗里就完全静止；你已经暴露的位置会招来追兵，但他们看不见你时不开枪。<br>
       · <b>层数</b>：打倒 1 个 BOSS 算通过 1 层，每层换新地图、敌人更强，<b>生命上限 +10</b>。<br>
       · <b>补给</b>：医疗包 +30 血；<b>除 BOSS 外每个敌人必定掉弹药</b>（另有 5% 概率掉血包），BOSS 不掉落。<br>
@@ -269,10 +269,11 @@ const ROLL_TIME = 0.26, ROLL_DIST = 4 * TS, ROLL_CD = 0.9; // 翻滚：4 格，�
 const MAG_SIZE = 15, RELOAD_TIME = 1.1, FIRE_CD = 0.145, BULLET_DMG = 22; // 兼容旧引用
 const STEPS_PER_FRAME = 1 / 120;
 // 武器：步枪（精准）/ 轻机枪（150 发弹匣、泼水、换弹慢）
+// V2.7：备用弹药上限统一 360（弹匣里的不算），到顶就捡不了弹药包
 const WEAPONS = {
   rifle: {
     key: 'rifle', name: '步枪', short: 'AR',
-    mag: 45, reserve: 360, reserveMax: 720, ammoPickup: 20, dmg: 35, cd: 0.145, reload: 1.1,
+    mag: 45, reserve: 360, reserveMax: 360, ammoPickup: 20, dmg: 35, cd: 0.145, reload: 1.1,
     spread: 0.018, moveSpread: 0.016, kick: 2.0
   },
   lmg: {
@@ -1050,22 +1051,40 @@ function circleHitsWall(cx, cy, rad) {
   }
   return false;
 }
+// V2.7：实体（玩家 / 敌人）之间不能重叠 —— 往别人身上走只会被挡住，可以沿着边滑
+function entityBlocked(self, x, y) {
+  if (!self) return false;
+  const r = self.r || 10;
+  const p = G && G.player;
+  if (p && p !== self && dist2(x, y, p.x, p.y) < (r + p.r) * (r + p.r)) return true;
+  if (G) {
+    for (const e of G.enemies) {
+      if (e === self || e.dead) continue;
+      if (dist2(x, y, e.x, e.y) < (r + e.r) * (r + e.r)) return true;
+    }
+  }
+  return false;
+}
+function canStandAt(self, x, y, rad) {
+  if (circleHitsWall(x, y, rad)) return false;
+  return !entityBlocked(self, x, y);
+}
 function moveEntity(e, dx, dy, rad) {
   if (dx) {
-    if (!circleHitsWall(e.x + dx, e.y, rad)) e.x += dx;
+    if (canStandAt(e, e.x + dx, e.y, rad)) e.x += dx;
     else {
       const sg = Math.sign(dy) || 1;
       for (let k = 1; k <= 2; k++) {
-        if (!circleHitsWall(e.x + dx, e.y + sg * k * 1.2, rad)) { e.x += dx; e.y += sg * k * 0.7; break; }
+        if (canStandAt(e, e.x + dx, e.y + sg * k * 1.2, rad)) { e.x += dx; e.y += sg * k * 0.7; break; }
       }
     }
   }
   if (dy) {
-    if (!circleHitsWall(e.x, e.y + dy, rad)) e.y += dy;
+    if (canStandAt(e, e.x, e.y + dy, rad)) e.y += dy;
     else {
       const sg = Math.sign(dx) || 1;
       for (let k = 1; k <= 2; k++) {
-        if (!circleHitsWall(e.x + sg * k * 1.2, e.y + dy, rad)) { e.y += dy; e.x += sg * k * 0.7; break; }
+        if (canStandAt(e, e.x + sg * k * 1.2, e.y + dy, rad)) { e.y += dy; e.x += sg * k * 0.7; break; }
       }
     }
   }
@@ -1083,20 +1102,95 @@ function moveEntityStep(e, dx, dy, rad, maxStep) {
 
 // 卡死救援：在附近找最近的不碰撞点
 function findFreeSpot(x, y, rad, maxR) {
-  if (!circleHitsWall(x, y, rad)) return [x, y];
+  const self = G && G.player;
+  if (!circleHitsWall(x, y, rad) && !entityBlocked(self, x, y)) return [x, y];
   for (let r = 4; r <= maxR; r += 4) {
     const n = Math.max(12, Math.ceil(r / 3));
     for (let k = 0; k < n; k++) {
       const a = (k / n) * TAU;
       const nx = x + Math.cos(a) * r, ny = y + Math.sin(a) * r;
-      if (!circleHitsWall(nx, ny, rad)) return [nx, ny];
+      if (!circleHitsWall(nx, ny, rad) && !entityBlocked(self, nx, ny)) return [nx, ny];
     }
   }
   return null;
 }
+// 场上还剩多少把钥匙（手里的 + 地上的 + 还挂在敌人身上的）
+function keysInWorld() {
+  let n = G.bossKeys;
+  for (const pk of G.pickups) if (pk.kind === 'key' && !pk.taken) n++;
+  for (const e of G.enemies) if (!e.dead && e.hasKey) n++;
+  return n;
+}
+
+// V2.7：把一个房间恢复成开局状态 —— 敌人按开局快照复活、门重新锁上、清空标记撤销
+function resetRoomToStart(r) {
+  if (!r || r.idx === startRoom) return false;
+  G.enemies = G.enemies.filter(e => e.room !== r.idx);
+  G.squads.forEach(sq => { sq.members = sq.members.filter(m => m.room !== r.idx); });
+  if (r.cleared) {
+    r.cleared = false;
+    G.roomsCleared = Math.max(0, G.roomsCleared - 1);
+  }
+  r.alive = 0; r.total = 0;
+  (r.doorIds || []).forEach(id => {
+    const d = doorGroups[id];
+    if (!d) return;
+    d.open = false; d.latched = false; d.timer = 0;
+  });
+  const sq = r.squadSnap
+    ? { id: G.squads.length, anchor: { x: r.squadSnap.anchor.x, y: r.squadSnap.anchor.y }, angle: r.squadSnap.angle, members: [], alert: false }
+    : null;
+  const plan = r.spawnPlan || [];
+  for (const rec of plan) {
+    let tx = rec.tx, ty = rec.ty;
+    const occupied = () => G.enemies.some(e => !e.dead && Math.floor(e.x / TS) === tx && Math.floor(e.y / TS) === ty);
+    const bad = !inMap(tx, ty) || grid[tI(tx, ty)] !== 1 || nearDoorTile(tx, ty, 2) || occupied();
+    if (bad) {
+      const alt = freeSpotIn(r, Math.random);
+      if (!alt) continue;
+      tx = alt[0]; ty = alt[1];
+    }
+    const e = makeEnemy(tx, ty, rec.type, r.idx, Math.random);
+    if (rec.hasKey && keysInWorld() < G.keysNeed) e.hasKey = true;
+    if (sq && rec.inSquad) {
+      e.squadId = sq.id;
+      e.slot = rec.slot ? { f: rec.slot.f, s: rec.slot.s, role: rec.role } : { f: 0, s: 0, role: rec.role || 'wing' };
+      e.squadRole = rec.role || 'wing';
+      e.state = 'idle';
+      sq.members.push(e);
+    }
+    pushEnemy(e, r);
+  }
+  if (sq && sq.members.length) {
+    sq.id = G.squads.length;                       // id 必须等于数组下标
+    for (const m of sq.members) m.squadId = sq.id;
+    G.squads.push(sq);
+  }
+  r.discovered = true;
+  return true;
+}
+
 function unstuckPlayer(automatic) {
   if (!G || !G.player) return false;
   const p = G.player;
+  if (!automatic) {
+    // V2.7：主动使用 → 回入口房；原来那间房没清完就重置回开局状态（清完了就不动）
+    const from = roomAtPoint(p.x, p.y);
+    let reset = false;
+    if (from && !from.cleared && from.idx !== startRoom) reset = resetRoomToStart(from);
+    const sp = pickSpawn(rooms[startRoom]);
+    if (!sp) return false;
+    p.x = sp[0] * TS + TS / 2;
+    p.y = sp[1] * TS + TS / 2;
+    p.rollT = 0; p.stuckT = 0; p.rollCd = 0;
+    p.invuln = Math.max(p.invuln, 1.2);
+    G.mouseDown = false;
+    G.camera.x = p.x; G.camera.y = p.y; G.camera.sx = 0; G.camera.sy = 0;
+    updateHUD();
+    toast(reset ? '已回到入口 · 原房间已重置' : '已回到入口');
+    return true;
+  }
+  // 自动脱困：只挪到最近的不碰撞点，不换房间
   let spot = findFreeSpot(p.x, p.y, p.r, TS * 6);
   if (!spot) {
     // 兜底：当前房间中心 / 最近的房间中心
@@ -1108,7 +1202,6 @@ function unstuckPlayer(automatic) {
   p.stuckT = 0;
   G.camera.x = p.x; G.camera.y = p.y;
   p.invuln = Math.max(p.invuln, 0.6);
-  if (!automatic) toast('已脱离卡死');
   return true;
 }
 function hasLOS(ax, ay, bx, by) {
@@ -1303,7 +1396,8 @@ function makeEnemy(tx, ty, type, roomIdx, rng) {
   return {
     x: tx * TS + TS / 2, y: ty * TS + TS / 2, r: T.r, type,
     hp: Math.round(T.hp * mul), maxHp: Math.round(T.hp * mul),
-    speed: T.speed, vision: T.vision, cd: T.cd, dmg: T.dmg, spread: T.spread,
+    speed: T.speed, baseSpeed: T.speed, vision: T.vision, cd: T.cd, dmg: T.dmg, spread: T.spread,
+    atkMul: 1, enraged: false,          // V2.7：队长阵亡后队员狂暴（攻速 / 移速 +30%）
     room: roomIdx,
     state: 'idle', aim: rng ? rng() * TAU : Math.random() * TAU,
     fireCd: FIRST_SHOT_DELAY,          // V2.6：初始攻击间隔 0.5s
@@ -1429,6 +1523,23 @@ function spawnLevel(seed, opts) {
     }
   }
 
+  // V2.7：给每个房间留一份开局快照 —— 主动脱离卡死时用来把房间重置回开局状态
+  rooms.forEach(r => {
+    r.spawnPlan = G.enemies.filter(e => e.room === r.idx).map(e => ({
+      type: e.type,
+      tx: Math.floor(e.x / TS), ty: Math.floor(e.y / TS),
+      hasKey: !!e.hasKey,
+      inSquad: e.squadId != null,
+      role: e.squadRole || null,
+      slot: e.slot ? { f: e.slot.f, s: e.slot.s, role: e.slot.role } : null
+    }));
+    r.squadSnap = null;
+  });
+  G.squads.forEach(sq => {
+    const m = sq.members.find(x => rooms[x.room]);
+    if (m) rooms[m.room].squadSnap = { anchor: { x: sq.anchor.x, y: sq.anchor.y }, angle: sq.angle };
+  });
+
   // 兜底：万一某个房间没刷出敌人，直接算已清空，避免门永远锁死
   rooms.forEach(r => {
     if (r.idx !== startRoom && !r.isBoss && r.alive === 0 && !r.cleared) {
@@ -1541,15 +1652,25 @@ function pushEnemy(e, r) {
   return e;
 }
 
-// V2.6：在 BOSS 身旁 1~3 格刷指定敌人（BOSS 房的两只小紫）
+// V2.6：在 BOSS 身旁 2~3 格刷指定敌人（BOSS 房的两只小紫）
+// V2.7：从 2 格起刷 —— 贴到 1 格会和 BOSS 的碰撞体重叠，之后双方都动不了
 function placeEnemiesBesideBoss(r, count, type, rng) {
   const boss = G.enemies.find(e => !e.dead && e.type === 'boss' && e.room === r.idx);
   if (!boss) { placeEnemies(r, count, type, rng); return; }
   const btx = Math.floor(boss.x / TS), bty = Math.floor(boss.y / TS);
+  const minGap = (boss.r + (ENEMY_TYPES[type] || { r: 10 }).r) * 0.9;   // 像素
   const used = [[btx, bty]];
+  const farEnough = (x, y) => {
+    const px = x * TS + TS / 2, py = y * TS + TS / 2;
+    for (const e of G.enemies) {
+      if (e.dead) continue;
+      if (dist(px, py, e.x, e.y) < (e.r + (ENEMY_TYPES[type] || { r: 10 }).r) + 3) return false;
+    }
+    return dist(px, py, boss.x, boss.y) >= minGap + 3;
+  };
   for (let i = 0; i < count; i++) {
     let pos = null;
-    for (let rad = 1; rad <= 3 && !pos; rad++) {
+    for (let rad = 2; rad <= 3 && !pos; rad++) {
       const cands = [];
       for (let oy = -rad; oy <= rad; oy++) {
         for (let ox = -rad; ox <= rad; ox++) {
@@ -1558,6 +1679,7 @@ function placeEnemiesBesideBoss(r, count, type, rng) {
           if (!inMap(x, y) || grid[tI(x, y)] !== 1) continue;
           if (nearDoorTile(x, y, 2)) continue;
           if (used.some(u => u[0] === x && u[1] === y)) continue;
+          if (!farEnough(x, y)) continue;
           cands.push([x, y]);
         }
       }
@@ -1565,10 +1687,13 @@ function placeEnemiesBesideBoss(r, count, type, rng) {
     }
     if (!pos) {
       // BOSS 被隔墙围住时退一步：房间里随便找块空地
-      for (let tries = 0; tries < 160 && !pos; tries++) {
+      for (let tries = 0; tries < 200 && !pos; tries++) {
         const x = r.x + 1 + Math.floor(rng() * Math.max(1, r.w - 2));
         const y = r.y + 1 + Math.floor(rng() * Math.max(1, r.h - 2));
-        if (grid[tI(x, y)] === 1 && !nearDoorTile(x, y, 2) && !used.some(u => u[0] === x && u[1] === y)) pos = [x, y];
+        if (grid[tI(x, y)] !== 1 || nearDoorTile(x, y, 2)) continue;
+        if (used.some(u => u[0] === x && u[1] === y)) continue;
+        if (!farEnough(x, y)) continue;
+        pos = [x, y];
       }
     }
     if (!pos) continue;
@@ -1610,10 +1735,10 @@ function assignFloorKeys(rng) {
 }
 
 // ---------------- 增援小队 ----------------
-// 三人小队：队长在前，两名队员在后方左右。未接敌时在黑暗中慢慢回到队位；
-// 接敌后保持队形推进。生成时没有任何提示。
+// 三人小队：队长永远站在最前面，两名队员在后方左右。未接敌时在黑暗中慢慢回到队位；
+// 接敌后保持队形推进。生成时没有任何提示。V2.7：队员用绿色表示，和紫色精英区分开。
 const SQUAD_SLOTS = [
-  { f: 0.0, s: 0.0, role: 'leader' },
+  { f: 0.0, s: 0.0, role: 'leader' },     // 0 号位 = 最前面
   { f: -1.35, s: 1.15, role: 'wing' },
   { f: -1.35, s: -1.15, role: 'wing' }
 ];
@@ -1640,18 +1765,23 @@ function placeReinforcementSquad(r, rng) {
     }
     return best;
   };
-  for (let i = 0; i < SQUAD_SLOTS.length; i++) {
-    const slot = SQUAD_SLOTS[i];
+  // V2.7：随机挑一个当队长，然后把他排到最前面的 0 号位，另外两个站后侧
+  const leaderIdx = Math.floor(rng() * SQUAD_SLOTS.length);
+  const order = [leaderIdx];
+  for (let i = 0; i < SQUAD_SLOTS.length; i++) if (i !== leaderIdx) order.push(i);
+  for (let k = 0; k < order.length; k++) {
+    const slot = SQUAD_SLOTS[k];
     const fx = Math.cos(angle), fy = Math.sin(angle);
     const tx = (ax + fx * slot.f * TS - fy * slot.s * TS) / TS;
     const ty = (ay + fy * slot.f * TS + fx * slot.s * TS) / TS;
     const pos = floorNear(tx, ty);
     if (!pos) continue;
     used.push({ x: pos[0], y: pos[1] });
+    const role = k === 0 ? 'leader' : 'wing';
     const e = makeEnemy(pos[0], pos[1], 'grunt', r.idx, rng);
     e.squadId = sq.id;
-    e.slot = slot;
-    e.squadRole = slot.role;
+    e.slot = { f: slot.f, s: slot.s, role };
+    e.squadRole = role;
     e.state = 'idle';
     sq.members.push(e);
     pushEnemy(e, r);
@@ -1751,9 +1881,11 @@ cv.addEventListener('wheel', e => {
 window.addEventListener('mouseup', e => { if (G && e.button === 0) G.mouseDown = false; });
 cv.addEventListener('mouseleave', () => { if (G) G.pointer.inside = false; });
 
-// V2.6：右键只当游戏里的翻滚用 —— 不让浏览器弹出菜单，也不让它接管前进/后退/回滚手势
+// V2.7：右键只当游戏里的翻滚用 —— 不让浏览器弹出菜单，也不让它接管前进/后退/回滚手势
+// 注意：这里绝不能拦 pointerdown/pointerup —— 拦了之后浏览器不会再派发兼容的 mousedown，
+// 画布上的「右键翻滚」就会跟着失效。
 window.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); });
-['mousedown', 'mouseup', 'pointerdown', 'pointerup', 'auxclick', 'dblclick'].forEach(type => {
+['mousedown', 'mouseup', 'auxclick', 'dblclick'].forEach(type => {
   window.addEventListener(type, e => {
     // 2 = 右键，3 = 后退键，4 = 前进键
     if (e.button === 2 || e.button === 3 || e.button === 4) e.preventDefault();
@@ -2193,6 +2325,28 @@ function damageEnemy(e, dmg) {
         toast('这把钥匙还在地上——记得捡');
       }
     }
+    // V2.7：队长阵亡 → 剩下的队员狂暴：攻速 +30%、移速 +30%，并开始围着玩家绕圈
+    if (e.squadId != null && e.squadRole === 'leader') {
+      const sq = G.squads[e.squadId];
+      if (sq) {
+        let n = 0;
+        for (const m of sq.members) {
+          if (m.dead || m === e) continue;
+          m.enraged = true;
+          m.atkMul = 1.3;
+          m.speed = (m.baseSpeed || m.speed) * 1.3;
+          m.orbitDir = Math.random() < 0.5 ? -1 : 1;
+          m.orbitT = 0.3 + Math.random() * 0.8;
+          m.state = 'chase';
+          m.lastX = G.player.x; m.lastY = G.player.y; m.lostT = 1.5;
+          n++;
+        }
+        if (n) {
+          floats(e.x, e.y - 28, '队长阵亡 · 队员狂暴', '#ff8a5c', 1.9);
+          toast('队长被打死了 —— 剩下的队员开始绕你转');
+        }
+      }
+    }
   } else {
     Sound.ehit();
   }
@@ -2506,38 +2660,54 @@ function updateEnemy(e, dt) {
     if (canSee) {
       e.aim = lerpAngle(e.aim, toP, 0.35);
       const desired = e.type === 'boss' ? 200 : 150;
-      // 小队队员优先回队位，避免挤成一团
-      let formationMove = false;
-      if (e.squadId != null && e.slot && e.slot.role === 'wing') {
-        const tgt = squadSlotPos(e);
-        if (tgt) {
-          const dd = dist(e.x, e.y, tgt.x, tgt.y);
-          if (dd > 64) {
-            const aa = Math.atan2(tgt.y - e.y, tgt.x - e.x);
-            moveEntity(e, Math.cos(aa) * e.speed * dt, Math.sin(aa) * e.speed * dt, e.r);
-            e.step += e.speed * dt;
-            formationMove = true;
+      if (e.enraged) {
+        // V2.7：队长阵亡后的队员 —— 围着玩家做随机位移
+        e.orbitT = (e.orbitT == null ? 0 : e.orbitT) - dt;
+        if (e.orbitT <= 0) {
+          e.orbitDir = Math.random() < 0.5 ? -1 : 1;
+          e.orbitT = 0.7 + Math.random() * 1.4;
+        }
+        const ring = 132;
+        let aa;
+        if (dP > ring + 34) aa = toP;                        // 太远：先贴近
+        else if (dP < ring - 34) aa = toP + Math.PI;         // 太近：拉开
+        else aa = toP + Math.PI / 2 * (e.orbitDir || 1);     // 正合适：绕圈
+        moveEntity(e, Math.cos(aa) * e.speed * dt, Math.sin(aa) * e.speed * dt, e.r);
+        e.step += e.speed * dt;
+      } else {
+        // 小队队员优先回队位，避免挤成一团
+        let formationMove = false;
+        if (e.squadId != null && e.squadRole === 'wing') {
+          const tgt = squadSlotPos(e);
+          if (tgt) {
+            const dd = dist(e.x, e.y, tgt.x, tgt.y);
+            if (dd > 64) {
+              const aa = Math.atan2(tgt.y - e.y, tgt.x - e.x);
+              moveEntity(e, Math.cos(aa) * e.speed * dt, Math.sin(aa) * e.speed * dt, e.r);
+              e.step += e.speed * dt;
+              formationMove = true;
+            }
           }
         }
-      }
-      if (!formationMove) {
-        if (dP > desired + 26) {
-          moveEntity(e, Math.cos(toP) * e.speed * dt, Math.sin(toP) * e.speed * dt, e.r);
-          e.step += e.speed * dt;
-        } else if (dP < desired - 44) {
-          moveEntity(e, -Math.cos(toP) * e.speed * 0.7 * dt, -Math.sin(toP) * e.speed * 0.7 * dt, e.r);
-        } else {
-          e.strafeT -= dt;
-          if (e.strafeT <= 0) { e.strafe *= -1; e.strafeT = 0.8 + Math.random() * 1.4; }
-          const sa = toP + Math.PI / 2 * e.strafe;
-          moveEntity(e, Math.cos(sa) * e.speed * 0.6 * dt, Math.sin(sa) * e.speed * 0.6 * dt, e.r);
+        if (!formationMove) {
+          if (dP > desired + 26) {
+            moveEntity(e, Math.cos(toP) * e.speed * dt, Math.sin(toP) * e.speed * dt, e.r);
+            e.step += e.speed * dt;
+          } else if (dP < desired - 44) {
+            moveEntity(e, -Math.cos(toP) * e.speed * 0.7 * dt, -Math.sin(toP) * e.speed * 0.7 * dt, e.r);
+          } else {
+            e.strafeT -= dt;
+            if (e.strafeT <= 0) { e.strafe *= -1; e.strafeT = 0.8 + Math.random() * 1.4; }
+            const sa = toP + Math.PI / 2 * e.strafe;
+            moveEntity(e, Math.cos(sa) * e.speed * 0.6 * dt, Math.sin(sa) * e.speed * 0.6 * dt, e.r);
+          }
         }
       }
       // 开火：看不见你的时候不开枪（不空放、不隔着黑暗点名）
       e.fireCd -= dt;
       if (!e.visible) e.fireCd = Math.max(e.fireCd, 0.35);
       if (e.fireCd <= 0 && dP < e.vision * 1.05 && e.visible === true) {
-        e.fireCd = shotGap();                                  // V2.6：之后每 0.7~1.1s 一发
+        e.fireCd = shotGap() / (e.atkMul || 1);                // V2.6：之后每 0.7~1.1s 一发（狂暴 +30% 攻速）
         if (e.type === 'boss') {
           e.burst = Math.random() < 0.05 ? 3 : 1;              // V2.6：BOSS 只有 5% 概率连击
         }
@@ -3251,10 +3421,29 @@ function drawEnemy(e, cx, cy, t) {
   }
   ctx.fillStyle = 'rgba(0,0,0,0.34)';
   ctx.beginPath(); ctx.ellipse(x + 2, y + 5, e.r * 1.15, e.r * 0.6, 0, 0, TAU); ctx.fill();
-  const body = e.type === 'boss' ? '#c86b60' : e.type === 'heavy' ? '#8a79a0' : '#8d7f68';
+  // V2.7：增援小队用绿色（队长更亮），和紫色精英 / 普通兵区分开
+  const isSquad = e.squadId != null;
+  const body = isSquad
+    ? (e.squadRole === 'leader' ? '#7ddc86' : (e.enraged ? '#5ccf8a' : '#4f8f5c'))
+    : (e.type === 'boss' ? '#c86b60' : e.type === 'heavy' ? '#8a79a0' : '#8d7f68');
   if (chase) {
     ctx.fillStyle = 'rgba(200,40,30,0.9)';
     ctx.beginPath(); ctx.arc(x, y, e.r + 2.5, 0, TAU); ctx.fill();
+  }
+  if (e.enraged && !dim) {
+    ctx.strokeStyle = 'rgba(255,90,70,0.85)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, e.r + 4.5, 0, TAU); ctx.stroke();
+  }
+  if (isSquad && !dim) {
+    // 头顶小三角：队长亮绿、队员暗绿
+    ctx.fillStyle = e.squadRole === 'leader' ? '#b6ffc4' : 'rgba(130,225,165,0.85)';
+    ctx.beginPath();
+    ctx.moveTo(x, y - e.r - 10);
+    ctx.lineTo(x - 4, y - e.r - 4);
+    ctx.lineTo(x + 4, y - e.r - 4);
+    ctx.closePath();
+    ctx.fill();
   }
   ctx.fillStyle = e.flash > 0 ? '#ffffff' : body;
   ctx.beginPath(); ctx.arc(x, y, e.r, 0, TAU); ctx.fill();
