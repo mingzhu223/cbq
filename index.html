@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CBQ · 随机室内清除</title>
+<title>咕？CBQ · 随机室内清除</title>
 <style>
 :root{
   --bg:#0a0c10; --panel:rgba(10,13,18,.90); --line:rgba(255,255,255,.13);
@@ -121,6 +121,7 @@ button.primary:hover{background:#ffc47d}
     <div class="room" id="roomTxt">—</div>
     <div class="big"><span id="aliveTxt">0</span><small> 目标</small></div>
     <div id="progTxt">0 / 0 房间已清</div>
+    <div id="keyTxt" style="color:#ffd76a;font-size:11px;letter-spacing:.08em">钥匙 0 / 3</div>
     <div id="bossLockTxt" style="color:var(--red);font-size:10.5px;letter-spacing:.06em"></div>
   </div>
   <div class="hud-bl">
@@ -132,12 +133,13 @@ button.primary:hover{background:#ffc47d}
 
 <div id="overlay">
   <div class="card" id="startCard">
-    <div class="tag">2D TACTICAL CQB · V2.5.1</div>
-    <h1>CBQ<span>室内清除</span></h1>
+    <div class="tag">2D TACTICAL CQB · V2.6</div>
+    <h1>咕？CBQ<span>室内清除</span></h1>
     <div class="sub">
       每局随机生成一片室内楼层：小房间随机拼合、走廊随机连通，<br>
       房间内用薄墙隔出若干小隔间，<b style="color:#ffb257">敌人只藏在小隔间里</b>。<br>
-      你只有 90° 视野——锥外全黑。清空当前房间的所有隔间，门才会解锁。
+      你只有 90° 视野——锥外全黑。清空当前房间的所有隔间，门才会解锁。<br>
+      每层有 3 个敌人带着<b style="color:#ffd76a">钥匙</b>，集齐 3 把才能开 BOSS 房（全部房间清空也会兜底开门）。
     </div>
     <div class="legend">
       <span><i style="background:#5a6472"></i>办公区</span>
@@ -149,7 +151,6 @@ button.primary:hover{background:#ffc47d}
     </div>
     <div class="nameRow">
       <span>代号</span>
-      <span style="color:var(--acc);letter-spacing:.04em">整活·</span>
       <input id="nameInput" maxlength="10" value="无名特工" autocomplete="off" spellcheck="false">
       <button id="btnSaveName">保存代号</button>
       <span id="nameHint" style="color:#6f7b8a;font-size:11px"></span>
@@ -188,10 +189,12 @@ button.primary:hover{background:#ffc47d}
       · <b style="color:var(--acc)">拐角记得点射压制</b>——进门前先短点几发，别整梭子扫空气。<br>
       · <b>操作</b>：鼠标右键翻滚闪避（向前 4 格、有无敌帧），鼠标滚轮缩放视野；退出在暂停菜单里，ESC 失效时点右下角「暂停」。<br>
       · <b>武器</b>：开局选步枪（45 发、单发 35、精准）或轻机枪（150 发、压制但散布大）。<br>
-      · <b>小隔间</b>：每个房间被薄墙隔成 4 个半封闭小隔间，敌人只会在小隔间里，且主要刷在墙角。<br>
-      · <b>门锁</b>：当前房间没清空时，它的所有门锁死（红色挂锁）；清空后自动解锁，并且<b>门会保持敞开</b>，已清空的房间之间不再相互封闭。<b>BOSS 门要全图其他房间都清空才开</b>。<br>
+      · <b>小隔间</b>：每个房间被薄墙随机切成 2~8 个半封闭小隔间（每局、每间都不一样），敌人只会在小隔间里，且主要刷在墙角；门口 2 格一定是空的。<br>
+      · <b>门锁</b>：当前房间没清空时，它的所有门锁死（红色挂锁）；清空后自动解锁，并且<b>门会保持敞开</b>，已清空的房间之间不再相互封闭。门口 2 格内不会有薄墙或掩体挡路。<b>BOSS 门改成钥匙制</b>：每层 3 个敌人身上带钥匙，集齐 3 把自动解锁；实在找不齐就把所有房间清空，BOSS 门也会强制打开。<br>
       · <b>初始房</b>：出生房间安全，不刷敌人，直接算已清空。<br>
       · <b>增援</b>：从第 2 层开始，随机房间可能藏一支三人小队——没有提示，会保持队形推进，在黑暗中会慢慢回到默认站位。<br>
+      · <b>敌人</b>：普通兵 50 血 / 9 伤，小紫（紫色精英）90 血 / 13 伤，BOSS 350 血 / 21 伤（只有 5% 概率三连击）。所有敌人发现你后 0.5 秒开第一枪，之后每 0.7~1.1 秒一发。<br>
+      · <b>BOSS 房</b>：BOSS 身边必定跟着两只小紫。<br>
       · <b>视野</b>：90° 锥形，锥外全黑；<b>已经清空的房间和门口附近的走廊会完全照亮</b>，未清空区域看过的部分保留微光。视野外和黑暗里的敌人不显示。<br>
       · <b>卡死救援</b>：卡进墙里 0.3 秒会自动脱出；也可以按 <b>H</b>（或暂停菜单里的按钮）手动脱离。<br>
       · <b>黑暗规则</b>：没察觉你的敌人待在黑暗里就完全静止；你已经暴露的位置会招来追兵，但他们看不见你时不开枪。<br>
@@ -322,7 +325,14 @@ const SAVE_KEY = 'cbq_save_v2';
 const MAX_FLOORS = 9999999;       // 榜单上限
 const BOARD_MAX = 30;             // 最多保留的条目数
 const FLOOR_HEAL = 35;            // 每通过一层恢复的生命
-const NAME_PREFIX = '整活·';       // 所有代号显示时统一加的前缀
+const BOSS_KEYS = 3;              // V2.6：每层要集齐 3 把钥匙才能开 BOSS 门
+const NAME_PREFIX = '';           // V2.6：代号不再加前缀（旧存档的「整活·」会被清掉）
+const LEGACY_PREFIX = '整活·';     // 只用来清理旧记录
+const stripName = s => {
+  let n = String(s == null ? '' : s).trim();
+  if (LEGACY_PREFIX && n.startsWith(LEGACY_PREFIX)) n = n.slice(LEGACY_PREFIX.length).trim();
+  return n.slice(0, 10);
+};
 const Save = {
   data: { name: '无名特工', nameSet: false, renamed: false, scores: [] },
   load() {
@@ -331,14 +341,14 @@ const Save = {
       if (!raw) return;
       const d = JSON.parse(raw);
       if (!d || typeof d !== 'object') return;
-      if (typeof d.name === 'string' && d.name.trim()) this.data.name = d.name.trim().slice(0, 10);
+      if (typeof d.name === 'string' && stripName(d.name)) this.data.name = stripName(d.name);
       this.data.nameSet = !!d.nameSet;
       this.data.renamed = !!d.renamed;
       if (Array.isArray(d.scores)) {
         this.data.scores = d.scores
           .filter(s => s && typeof s.name === 'string' && Number.isFinite(s.floors))
           .map(s => ({
-            name: String(s.name).slice(0, 10),
+            name: stripName(s.name),
             floors: clamp(Math.floor(s.floors), 0, MAX_FLOORS),
             ts: Number(s.ts) || 0
           }));
@@ -360,9 +370,7 @@ const Save = {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) {}
   },
   setName(v, isRename) {
-    let n = String(v || '').trim();
-    if (n.startsWith(NAME_PREFIX)) n = n.slice(NAME_PREFIX.length);
-    n = n.slice(0, 10);
+    const n = stripName(v);
     if (!n) return false;
     if (isRename && this.data.renamed) return false;
     this.data.name = n;
@@ -475,6 +483,7 @@ function newGame() {
     pointer: { x: 0, y: 0, inside: false, screenX: 0, screenY: 0 },
     keys: {}, mouseDown: false,
     bossDead: false, bossRoom: -1,
+    bossKeys: 0, keysNeed: BOSS_KEYS,     // V2.6：钥匙进度 / 本层需要的钥匙数
     // 视野
     fov: { dist: new Float32Array(FOV_SAMPLES), poly: [], updated: false },
     seed: 0, frame: 0,
@@ -687,7 +696,20 @@ function genLevel(seed) {
   });
   roomList.forEach(r => { if (!r.doorIds) r.doorIds = []; });
 
-  // ---- 掩体后再校验可达（房间内） ----
+  // ---- V2.6：门口 2 格内保持空旷 ----
+  // 薄墙/掩体一旦贴着门口刷，进门时圆碰撞体容易卡在门框和墙之间，这里统一清掉
+  doorGroups.forEach(d => d.tiles.forEach(([tx, ty]) => {
+    for (let oy = -2; oy <= 2; oy++) {
+      for (let ox = -2; ox <= 2; ox++) {
+        const x = tx + ox, y = ty + oy;
+        if (!inMap(x, y)) continue;
+        if (roomAt[tI(x, y)] < 0) continue;      // 只清房间内部，房间外墙保留
+        const tt = grid[tI(x, y)];
+        if (tt === PARTITION || tt === 3) grid[tI(x, y)] = 1;
+      }
+    }
+  }));
+
   return { rng, ri, rf, roomList, nodes, bossNode };
 }
 let G_bossRoomStatic = -1;
@@ -752,28 +774,34 @@ const PARTITION = 4;
 function buildPartitions(r, rng) {
   const minLeaf = 4;
   const leaves = [];
+  // V2.6：分割层数 / 切分位置 / 门洞位置全部随机化，避免每间房都长成同一个「十」字
+  const maxDepth = rng() < 0.42 ? 3 : 2;
   const split = (x, y, w, h, depth) => {
     const canV = w >= 2 * minLeaf + 1;
     const canH = h >= 2 * minLeaf + 1;
-    if (depth >= 2 || (!canV && !canH)) {
+    if (depth >= maxDepth || (!canV && !canH) || (depth > 0 && rng() < 0.16)) {
       if (w >= 2 && h >= 2) leaves.push({ x, y, w, h });
       return;
     }
     const vertical = canV && (!canH || rng() < 0.5);
     if (vertical) {
-      const sx = x + minLeaf + Math.floor(rng() * (w - 2 * minLeaf));
-      const gap = y + Math.floor(rng() * Math.max(1, h - 1));
+      const lo = x + minLeaf, hi = x + w - minLeaf - 1;
+      const sx = clamp(x + Math.round(w * (0.3 + rng() * 0.45)), lo, hi);
+      const gapLen = rng() < 0.22 ? 3 : 2;               // 门洞偶尔 3 格宽
+      const gap = y + Math.floor(rng() * Math.max(1, h - gapLen + 1));
       for (let yy = y; yy < y + h; yy++) {
-        if (yy === gap || yy === gap + 1) continue;
+        if (yy >= gap && yy < gap + gapLen) continue;
         if (inMap(sx, yy)) grid[tI(sx, yy)] = PARTITION;
       }
       split(x, y, sx - x, h, depth + 1);
       split(sx + 1, y, x + w - sx - 1, h, depth + 1);
     } else {
-      const sy = y + minLeaf + Math.floor(rng() * (h - 2 * minLeaf));
-      const gap = x + Math.floor(rng() * Math.max(1, w - 1));
+      const lo = y + minLeaf, hi = y + h - minLeaf - 1;
+      const sy = clamp(y + Math.round(h * (0.3 + rng() * 0.45)), lo, hi);
+      const gapLen = rng() < 0.22 ? 3 : 2;
+      const gap = x + Math.floor(rng() * Math.max(1, w - gapLen + 1));
       for (let xx = x; xx < x + w; xx++) {
-        if (xx === gap || xx === gap + 1) continue;
+        if (xx >= gap && xx < gap + gapLen) continue;
         if (inMap(xx, sy)) grid[tI(xx, sy)] = PARTITION;
       }
       split(x, y, w, sy - y, depth + 1);
@@ -781,8 +809,26 @@ function buildPartitions(r, rng) {
     }
   };
   split(r.x, r.y, r.w, r.h, 0);
+  addPartitionClutter(r, rng);
   r.subRooms = leaves;
   ensurePartitionConnectivity(r);
+}
+
+// V2.6：隔间里再撒几段 1~3 格的短墙 / 单柱，让每间房长得不一样
+function addPartitionClutter(r, rng) {
+  const n = 1 + Math.floor(rng() * 3);
+  for (let i = 0; i < n; i++) {
+    const len = 1 + Math.floor(rng() * 3);
+    const horiz = rng() < 0.5;
+    const x = r.x + 2 + Math.floor(rng() * Math.max(1, r.w - 5));
+    const y = r.y + 2 + Math.floor(rng() * Math.max(1, r.h - 5));
+    for (let j = 0; j < len; j++) {
+      const px = horiz ? x + j : x;
+      const py = horiz ? y : y + j;
+      if (px <= r.x || py <= r.y || px >= r.x + r.w - 1 || py >= r.y + r.h - 1) break;
+      if (grid[tI(px, py)] === 1) grid[tI(px, py)] = PARTITION;
+    }
+  }
 }
 
 // 隔墙可能互相堵住门洞，生成后按连通分量补开通道（2 格宽）
@@ -959,6 +1005,15 @@ function ensureReachable(r, rng, ri) {
 
 // ---------------- 碰撞 / 视线 ----------------
 function isDoorTile(x, y) { return tile(x, y) === 2; }
+// 距离任意门格 rad 格以内（切比雪夫距离）——刷怪/刷补给时用来让开门口
+function nearDoorTile(x, y, rad) {
+  for (const d of doorGroups) {
+    for (const t of d.tiles) {
+      if (Math.abs(t[0] - x) <= rad && Math.abs(t[1] - y) <= rad) return true;
+    }
+  }
+  return false;
+}
 function doorGroupAt(x, y) {
   for (const d of doorGroups) {
     for (const t of d.tiles) if (t[0] === x && t[1] === y) return d;
@@ -1235,10 +1290,13 @@ function makePlayer(tx, ty) {
   };
 }
 const ENEMY_TYPES = {
-  grunt: { hp: 46, speed: 84, vision: 470, cd: 1.15, dmg: 9, spread: 0.10, r: 10 },
-  heavy: { hp: 104, speed: 62, vision: 520, cd: 1.55, dmg: 15, spread: 0.12, r: 13 },
-  boss:  { hp: 460, speed: 72, vision: 640, cd: 0.8, dmg: 13, spread: 0.08, r: 19 }
+  grunt: { hp: 50, speed: 84, vision: 470, cd: 0.9, dmg: 9, spread: 0.10, r: 10 },
+  heavy: { hp: 90, speed: 62, vision: 520, cd: 0.9, dmg: 13, spread: 0.12, r: 13 },   // 小紫（紫色精英）
+  boss:  { hp: 350, speed: 72, vision: 640, cd: 0.9, dmg: 21, spread: 0.08, r: 19 }
 };
+// V2.6：发现玩家后 0.5 秒开第一枪，之后每 0.7~1.1 秒一发
+const FIRST_SHOT_DELAY = 0.5;
+const shotGap = () => 0.7 + Math.random() * 0.4;
 function makeEnemy(tx, ty, type, roomIdx, rng) {
   const T = ENEMY_TYPES[type];
   const mul = 1 + roomIdx * 0.02;
@@ -1248,7 +1306,7 @@ function makeEnemy(tx, ty, type, roomIdx, rng) {
     speed: T.speed, vision: T.vision, cd: T.cd, dmg: T.dmg, spread: T.spread,
     room: roomIdx,
     state: 'idle', aim: rng ? rng() * TAU : Math.random() * TAU,
-    fireCd: 0.4 + (rng ? rng() : Math.random()) * 0.9,
+    fireCd: FIRST_SHOT_DELAY,          // V2.6：初始攻击间隔 0.5s
     flash: 0, dead: false, deadT: 0,
     lastX: 0, lastY: 0, lostT: 0, searchT: 0,
     path: null, pathI: 0, repathT: 0, stuckT: 0, lastPos: { x: 0, y: 0 },
@@ -1309,6 +1367,7 @@ function spawnLevel(seed, opts) {
   G.squads = []; G.litCorridors = new Set(); G.seenTiles = new Set();
   if (!carry) { G.kills = 0; G.shots = 0; G.hits = 0; G.time = 0; }
   G.roomsCleared = 0;
+  G.bossKeys = 0; G.keysNeed = BOSS_KEYS;     // V2.6：每层重新集钥匙
   G.bossDead = false; G.bossRoom = rooms.findIndex(r => r.isBoss);
   G.frame = 0;
   // 楼层难度：越深血越厚、伤害越高、人越多
@@ -1329,9 +1388,10 @@ function spawnLevel(seed, opts) {
       return;
     }
     if (r.isBoss) {
-      // BOSS 房只放 BOSS
+      // V2.6：BOSS 房 = BOSS + 两只贴身小紫
       placeEnemies(r, 1, 'boss', rng, true);
       if (r.total === 0) placeEnemies(r, 1, 'boss', rng, true);
+      placeEnemiesBesideBoss(r, 2, 'heavy', rng);
       return;
     }
     const base = 2 + Math.min(3, Math.floor(r.dist / 2));
@@ -1354,6 +1414,9 @@ function spawnLevel(seed, opts) {
       });
     }
   });
+
+  // V2.6：本层必有 3 个（非 BOSS）敌人带钥匙，钥匙躺在它们身上，打掉才掉
+  assignFloorKeys(rng);
 
   // 增援：从第 2 层开始，每层有概率在随机房间刷一支三人小队（无提示）
   if (G.floor >= 2) {
@@ -1388,6 +1451,7 @@ function freeSpotIn(r, rng, avoid) {
     const x = r.x + 1 + Math.floor(rng() * (r.w - 2));
     const y = r.y + 1 + Math.floor(rng() * (r.h - 2));
     if (grid[tI(x, y)] !== 1) continue;
+    if (nearDoorTile(x, y, 2)) continue;              // 补给别堵在门口
     if (avoid) {
       let bad = false;
       for (const a of avoid) {
@@ -1404,6 +1468,7 @@ function placeEnemies(r, count, type, rng, boss) {
   const used = [];
   const isFree = (x, y) => {
     if (grid[tI(x, y)] !== 1) return false;
+    if (nearDoorTile(x, y, 2)) return false;      // 门口 2 格不站人，避免堵门/卡脚
     if (used.some(u => Math.abs(u[0] - x) <= 2 && Math.abs(u[1] - y) <= 2)) return false;
     if (r.idx === startRoom && G.player &&
       dist2(x * TS, y * TS, G.player.x, G.player.y) < (TS * 5) * (TS * 5)) return false;
@@ -1450,24 +1515,98 @@ function placeEnemies(r, count, type, rng, boss) {
       }
     }
     if (!pos) {
-      // 最后兜底：忽略间距，只要有地面（避免房间空着导致永远无法清空）
+      // 最后兜底：忽略间距，但门口 2 格仍然不放（宁可这间少刷一个，也别堵门）
       for (let tries = 0; tries < 200 && !pos; tries++) {
         const leaf = leaves[Math.floor(rng() * leaves.length)];
         const x = leaf.x + Math.floor(rng() * leaf.w);
         const y = leaf.y + Math.floor(rng() * leaf.h);
-        if (grid[tI(x, y)] === 1) pos = [x, y];
+        if (grid[tI(x, y)] !== 1) continue;
+        if (nearDoorTile(x, y, 2)) continue;
+        pos = [x, y];
       }
     }
     if (!pos) continue;
     used.push(pos);
-    const e = makeEnemy(pos[0], pos[1], type, r.idx, rng);
-    // 楼层难度：血量、伤害随层数上升
-    e.hp = Math.round(e.hp * (G.diffHp || 1));
-    e.maxHp = e.hp;
-    e.dmg = Math.round(e.dmg * (G.diffDmg || 1) * 10) / 10;
-    G.enemies.push(e);
-    r.alive++; r.total++;
+    pushEnemy(makeEnemy(pos[0], pos[1], type, r.idx, rng), r);
   }
+}
+
+// 统一套上楼层难度（血 / 伤害）并入列，房间计数一起加
+function pushEnemy(e, r) {
+  e.hp = Math.round(e.hp * (G.diffHp || 1));
+  e.maxHp = e.hp;
+  e.dmg = Math.round(e.dmg * (G.diffDmg || 1) * 10) / 10;
+  G.enemies.push(e);
+  r.alive++; r.total++;
+  return e;
+}
+
+// V2.6：在 BOSS 身旁 1~3 格刷指定敌人（BOSS 房的两只小紫）
+function placeEnemiesBesideBoss(r, count, type, rng) {
+  const boss = G.enemies.find(e => !e.dead && e.type === 'boss' && e.room === r.idx);
+  if (!boss) { placeEnemies(r, count, type, rng); return; }
+  const btx = Math.floor(boss.x / TS), bty = Math.floor(boss.y / TS);
+  const used = [[btx, bty]];
+  for (let i = 0; i < count; i++) {
+    let pos = null;
+    for (let rad = 1; rad <= 3 && !pos; rad++) {
+      const cands = [];
+      for (let oy = -rad; oy <= rad; oy++) {
+        for (let ox = -rad; ox <= rad; ox++) {
+          if (Math.max(Math.abs(ox), Math.abs(oy)) !== rad) continue;   // 只看这一圈
+          const x = btx + ox, y = bty + oy;
+          if (!inMap(x, y) || grid[tI(x, y)] !== 1) continue;
+          if (nearDoorTile(x, y, 2)) continue;
+          if (used.some(u => u[0] === x && u[1] === y)) continue;
+          cands.push([x, y]);
+        }
+      }
+      if (cands.length) pos = cands[Math.floor(rng() * cands.length)];
+    }
+    if (!pos) {
+      // BOSS 被隔墙围住时退一步：房间里随便找块空地
+      for (let tries = 0; tries < 160 && !pos; tries++) {
+        const x = r.x + 1 + Math.floor(rng() * Math.max(1, r.w - 2));
+        const y = r.y + 1 + Math.floor(rng() * Math.max(1, r.h - 2));
+        if (grid[tI(x, y)] === 1 && !nearDoorTile(x, y, 2) && !used.some(u => u[0] === x && u[1] === y)) pos = [x, y];
+      }
+    }
+    if (!pos) continue;
+    used.push(pos);
+    pushEnemy(makeEnemy(pos[0], pos[1], type, r.idx, rng), r);
+  }
+}
+
+// V2.6：本层必定有 3 个非 BOSS 敌人携带钥匙（普通兵或小紫），打掉才掉
+// 尽量分散到 3 个不同房间；BOSS 房的敌人不背钥匙（那会儿门还锁着，等于白给）
+function assignFloorKeys(rng) {
+  const bossIdx = (rooms.find(r => r.isBoss) || {}).idx;
+  const pool = G.enemies.filter(e => !e.dead && e.type !== 'boss' && e.room !== bossIdx);
+  const need = Math.min(G.keysNeed, pool.length);
+  const byRoom = new Map();
+  for (const e of pool) {
+    if (!byRoom.has(e.room)) byRoom.set(e.room, []);
+    byRoom.get(e.room).push(e);
+  }
+  const roomIds = [...byRoom.keys()];
+  for (let i = roomIds.length - 1; i > 0; i--) {          // 洗牌，别老是前几间房
+    const j = Math.floor(rng() * (i + 1));
+    [roomIds[i], roomIds[j]] = [roomIds[j], roomIds[i]];
+  }
+  let got = 0;
+  for (const rid of roomIds) {
+    if (got >= need) break;
+    const arr = byRoom.get(rid);
+    const e = arr[Math.floor(rng() * arr.length)];
+    if (!e || e.hasKey) continue;
+    e.hasKey = true; got++;
+  }
+  const rest = pool.filter(e => !e.hasKey);
+  while (got < need && rest.length) {                     // 房间不够就随便补
+    const e = rest.splice(Math.floor(rng() * rest.length), 1)[0];
+    e.hasKey = true; got++;
+  }
+  return got;
 }
 
 // ---------------- 增援小队 ----------------
@@ -1493,6 +1632,7 @@ function placeReinforcementSquad(r, rng) {
     for (let y = leaf.y; y < leaf.y + leaf.h; y++) {
       for (let x = leaf.x; x < leaf.x + leaf.w; x++) {
         if (grid[tI(x, y)] !== 1) continue;
+        if (nearDoorTile(x, y, 2)) continue;
         if (used.some(u => u.x === x && u.y === y)) continue;
         const d = (x - tx) * (x - tx) + (y - ty) * (y - ty);
         if (d < bd) { bd = d; best = [x, y]; }
@@ -1509,16 +1649,12 @@ function placeReinforcementSquad(r, rng) {
     if (!pos) continue;
     used.push({ x: pos[0], y: pos[1] });
     const e = makeEnemy(pos[0], pos[1], 'grunt', r.idx, rng);
-    e.hp = Math.round(e.hp * (G.diffHp || 1));
-    e.maxHp = e.hp;
-    e.dmg = Math.round(e.dmg * (G.diffDmg || 1) * 10) / 10;
     e.squadId = sq.id;
     e.slot = slot;
     e.squadRole = slot.role;
     e.state = 'idle';
     sq.members.push(e);
-    G.enemies.push(e);
-    r.alive++; r.total++;
+    pushEnemy(e, r);
   }
   if (sq.members.length) G.squads.push(sq);
 }
@@ -1544,7 +1680,7 @@ function alertSquad(id, px, py) {
   for (const m of sq.members) {
     if (m.dead) continue;
     m.state = 'chase';
-    m.fireCd = Math.max(m.fireCd, 1.5);
+    m.fireCd = Math.max(m.fireCd, FIRST_SHOT_DELAY);
     m.lastX = px; m.lastY = py; m.lostT = 1.2; m.repathT = 0;
   }
 }
@@ -1566,6 +1702,8 @@ function isEscapeKey(e) {
 window.addEventListener('keydown', e => {
   const esc = isEscapeKey(e);
   const k = (e.key || '').toLowerCase();
+  // Alt+← / Alt+→ 是浏览器的前进后退：游戏里一律拦掉
+  if (e.altKey && (k === 'arrowleft' || k === 'arrowright')) { e.preventDefault(); return; }
   if (esc || k === ' ') e.preventDefault();
   if (!G) return;
   if (esc || k === 'p') {
@@ -1611,8 +1749,24 @@ cv.addEventListener('wheel', e => {
   G.zoom = clamp((G.zoom || 1) * factor, 0.7, 1.8);
 }, { passive: false });
 window.addEventListener('mouseup', e => { if (G && e.button === 0) G.mouseDown = false; });
-window.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('mouseleave', () => { if (G) G.pointer.inside = false; });
+
+// V2.6：右键只当游戏里的翻滚用 —— 不让浏览器弹出菜单，也不让它接管前进/后退/回滚手势
+window.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); });
+['mousedown', 'mouseup', 'pointerdown', 'pointerup', 'auxclick', 'dblclick'].forEach(type => {
+  window.addEventListener(type, e => {
+    // 2 = 右键，3 = 后退键，4 = 前进键
+    if (e.button === 2 || e.button === 3 || e.button === 4) e.preventDefault();
+  }, { passive: false });
+});
+// 横向滚轮 / 触控板左右滑、Ctrl+滚轮整页缩放：一律不交给浏览器
+window.addEventListener('wheel', e => {
+  if (e.ctrlKey || e.metaKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) e.preventDefault();
+}, { passive: false });
+// 拖拽、选中、双击选中也不要（只限游戏画布，输入框里照常能选字）
+cv.addEventListener('dragstart', e => e.preventDefault());
+cv.addEventListener('selectstart', e => e.preventDefault());
+document.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); }); // 中键自动滚动
 
 // ---------------- 流程 ----------------
 function showOverlay(id) {
@@ -1818,8 +1972,10 @@ $('nameInput').addEventListener('keydown', e => {
 });
 
 // ---------------- 门 ----------------
-// 玩家所在房间没清空时，这个房间的门全部锁死；BOSS 门要全图清空才开
+// 玩家所在房间没清空时，这个房间的门全部锁死；
+// V2.6：BOSS 门改为「集齐 3 把钥匙」解锁，兜底是「所有房间清空」也自动开
 function bossDoorUnlocked() {
+  if (G && G.bossKeys >= G.keysNeed) return true;
   return rooms.every(r => r.isBoss || r.cleared);
 }
 function doorLocked(d) {
@@ -1951,7 +2107,7 @@ function fire() {
     if (e.dead || e.state === 'chase') continue;
     if (distPointSegment(e.x, e.y, mx, my, ex, ey) < TS) {
       e.state = 'chase';
-      e.fireCd = Math.max(e.fireCd, 1.5);
+      e.fireCd = Math.max(e.fireCd, FIRST_SHOT_DELAY);
       e.lastX = p.x; e.lastY = p.y; e.lostT = 1.2;
       if (e.squadId != null) alertSquad(e.squadId, p.x, p.y);
     }
@@ -1988,7 +2144,7 @@ function damageEnemy(e, dmg) {
   if (e.dead) return;
   e.hp -= dmg;
   e.flash = 0.14;
-  e.fireCd = Math.max(e.fireCd, 1.5); // 首次还击延迟 1.5 秒
+  e.fireCd = Math.max(e.fireCd, FIRST_SHOT_DELAY); // 首次还击延迟 0.5 秒
   if (e.squadId != null) alertSquad(e.squadId, G.player.x, G.player.y);
   if (e.state === 'idle' || e.state === 'suspicious') {
     e.state = 'chase';
@@ -2028,6 +2184,14 @@ function damageEnemy(e, dmg) {
           kind: 'hp', bob: Math.random() * TAU, taken: false, drop: true
         });
       }
+      // V2.6：带钥匙的敌人掉钥匙
+      if (e.hasKey) {
+        G.pickups.push({
+          x: e.x, y: e.y, kind: 'key', bob: Math.random() * TAU, taken: false, drop: true
+        });
+        floats(e.x, e.y - 18, '钥匙掉落', '#ffd76a', 1.6);
+        toast('这把钥匙还在地上——记得捡');
+      }
     }
   } else {
     Sound.ehit();
@@ -2063,7 +2227,18 @@ function markRoomCleared(r) {
     d.latched = true;
     if (!doorLocked(d)) openDoor(d);
   });
-  if (!r.isBoss && r.alive === 0 && G.roomsCleared >= rooms.length) return;
+  // V2.6：兜底——所有房间都清空了，BOSS 门不管钥匙齐不齐都直接开，防止卡关
+  if (!r.isBoss && rooms.every(x => x.isBoss || x.cleared)) {
+    let opened = false;
+    doorGroups.forEach(d => {
+      const a = rooms[d.a], b = rooms[d.b];
+      if ((a && a.isBoss) || (b && b.isBoss)) {
+        d.latched = true;
+        if (!d.open) { openDoor(d); opened = true; }
+      }
+    });
+    if (opened) toast('全房清空 · BOSS 门已强制开启');
+  }
 }
 // 清空房间后，门口附近的走廊也点亮（BFS 5 格）
 function lightCorridorsAround(r) {
@@ -2228,7 +2403,13 @@ function updatePlayer(dt) {
   for (const pk of G.pickups) {
     if (pk.taken) continue;
     if (dist2(pk.x, pk.y, p.x, p.y) < (p.r + 13) * (p.r + 13)) {
-      if (pk.kind === 'hp') {
+      if (pk.kind === 'key') {
+        G.bossKeys = Math.min(G.keysNeed, G.bossKeys + 1);
+        floats(pk.x, pk.y - 14, '钥匙 ' + G.bossKeys + ' / ' + G.keysNeed, '#ffd76a', 1.3);
+        toast(G.bossKeys >= G.keysNeed
+          ? '三把钥匙集齐 · BOSS 门已解锁'
+          : '拾取钥匙 ' + G.bossKeys + ' / ' + G.keysNeed);
+      } else if (pk.kind === 'hp') {
         if (p.hp >= p.maxHp) continue;
         p.hp = Math.min(p.maxHp, p.hp + 30);
         floats(pk.x, pk.y - 12, '+30 HP', '#7ee08a', 1);
@@ -2239,7 +2420,7 @@ function updatePlayer(dt) {
       }
       pk.taken = true;
       Sound.pickup();
-      sparks(pk.x, pk.y, pk.kind === 'hp' ? '#7ee08a' : '#ffb257', 6);
+      sparks(pk.x, pk.y, pk.kind === 'hp' ? '#7ee08a' : (pk.kind === 'key' ? '#ffd76a' : '#ffb257'), 6);
     }
   }
 }
@@ -2285,7 +2466,7 @@ function updateEnemy(e, dt) {
   if (!e.visible && (e.state === 'idle' || e.state === 'suspicious')) {
     if (canSee || senseClose) {
       e.state = 'chase'; e.alertT = 1.2;
-      e.fireCd = Math.max(e.fireCd, 1.5);
+      e.fireCd = Math.max(e.fireCd, FIRST_SHOT_DELAY);
       if (e.type !== 'boss') floats(e.x, e.y - e.r - 8, '!', '#ff7a5c', 0.7);
       e.repathT = 0; e.lostT = 1.0;
       e.lastX = p.x; e.lastY = p.y;
@@ -2299,7 +2480,7 @@ function updateEnemy(e, dt) {
   if (canSee || senseClose) {
     if (e.state !== 'chase') {
       e.state = 'chase'; e.alertT = 1.2;
-      e.fireCd = Math.max(e.fireCd, 1.5);
+      e.fireCd = Math.max(e.fireCd, FIRST_SHOT_DELAY);
       if (e.type !== 'boss') floats(e.x, e.y - e.r - 8, '!', '#ff7a5c', 0.7);
       e.repathT = 0;
     }
@@ -2356,10 +2537,9 @@ function updateEnemy(e, dt) {
       e.fireCd -= dt;
       if (!e.visible) e.fireCd = Math.max(e.fireCd, 0.35);
       if (e.fireCd <= 0 && dP < e.vision * 1.05 && e.visible === true) {
-        e.fireCd = e.cd * (0.88 + Math.random() * 0.3);
+        e.fireCd = shotGap();                                  // V2.6：之后每 0.7~1.1s 一发
         if (e.type === 'boss') {
-          if (Math.random() < 0.4) e.burst = 3;
-          else e.burst = 1;
+          e.burst = Math.random() < 0.05 ? 3 : 1;              // V2.6：BOSS 只有 5% 概率连击
         }
         enemyShoot(e, toP);
       }
@@ -2725,8 +2905,35 @@ function draw() {
   // 视野黑暗遮罩（锥外全黑，锥内随距离渐暗）
   ctx.restore();
   drawFOVMask(cx, cy);
+  drawMapBorder(cx, cy, z);
   drawCrosshair(cx, cy);
   drawMinimap();
+}
+
+// V2.6：整张地图的最外圈边框常亮（不吃视野遮罩），能一眼看出这张图有多大
+function drawMapBorder(cx, cy, z) {
+  const x0 = -cx * z, y0 = -cy * z;
+  const w = WORLD_W * z, h = WORLD_H * z;
+  if (x0 > VIEW.w || y0 > VIEW.h || x0 + w < 0 || y0 + h < 0) return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(140,206,232,0.5)';
+  ctx.lineWidth = 1.6;
+  ctx.setLineDash([12, 9]);
+  ctx.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, h - 1);
+  ctx.setLineDash([]);
+  // 四角加粗括号，边界更醒目
+  const L = 26;
+  ctx.strokeStyle = 'rgba(160,220,245,0.85)';
+  ctx.lineWidth = 2.4;
+  const corners = [[x0, y0, 1, 1], [x0 + w, y0, -1, 1], [x0, y0 + h, 1, -1], [x0 + w, y0 + h, -1, -1]];
+  for (const [px, py, sx, sy] of corners) {
+    ctx.beginPath();
+    ctx.moveTo(px + sx * L, py);
+    ctx.lineTo(px, py);
+    ctx.lineTo(px, py + sy * L);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function shade(sx, sy, w, h, side) {
@@ -2968,6 +3175,23 @@ function drawHazardFrame(ox, oy, ow, oh, t, ix, iy, iw, ih) {
 function drawPickup(pk, cx, cy, t) {
   const x = pk.x - cx, y = pk.y - cy;
   const bob = Math.sin(t * 3 + pk.bob) * 2.5;
+  if (pk.kind === 'key') {
+    // V2.6：金钥匙
+    const ky = y + bob;
+    ctx.fillStyle = 'rgba(255,215,106,0.16)';
+    ctx.beginPath(); ctx.arc(x, ky, 14, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#ffd76a';
+    ctx.fillStyle = '#ffd76a';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x - 4, ky, 3.6, 0, TAU); ctx.stroke();
+    ctx.fillRect(x - 0.5, ky - 1, 9, 2);
+    ctx.fillRect(x + 5.5, ky + 1, 2, 3.6);
+    ctx.fillRect(x + 2.5, ky + 1, 2, 2.4);
+    ctx.strokeStyle = 'rgba(255,231,170,0.55)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - 10, ky - 10, 20, 20);
+    return;
+  }
   if (pk.kind === 'hp') {
     ctx.fillStyle = 'rgba(126,224,138,0.16)';
     ctx.beginPath(); ctx.arc(x, y + bob, 13, 0, TAU); ctx.fill();
@@ -3367,6 +3591,11 @@ function drawMinimap() {
   ctx.fillStyle = 'rgba(255,255,255,0.05)';
   ctx.fillRect(mx, my, mw, mh);
 
+  // V2.6：地图真实范围的边框常亮，框住的部分就是这张图的实际大小
+  ctx.strokeStyle = 'rgba(150,212,238,0.9)';
+  ctx.lineWidth = 1.4;
+  ctx.strokeRect(mx + 0.5, my + 0.5, MAP_W * s - 1, MAP_H * s - 1);
+
   // 全图房间轮廓：没探索也看得到结构，探索程度只影响填充与亮度
   for (const r of rooms) {
     const rx = mx + r.x * s, ry = my + r.y * s, rw = Math.max(2, r.w * s), rh = Math.max(2, r.h * s);
@@ -3407,6 +3636,14 @@ function drawMinimap() {
   for (const d of doorGroups) {
     const dx = mx + d.cx * s, dy = my + d.cy * s;
     ctx.fillRect(dx - 1.2, dy - 1.2, 2.4, 2.4);
+  }
+
+  // V2.6：地上的钥匙在小地图上给个金点，免得漏捡
+  for (const pk of G.pickups) {
+    if (pk.taken || pk.kind !== 'key') continue;
+    const kx = mx + (pk.x / TS) * s, kpy = my + (pk.y / TS) * s;
+    ctx.fillStyle = 'rgba(255,215,106,0.95)';
+    ctx.fillRect(kx - 2, kpy - 2, 4, 4);
   }
 
   // 敌人点（已发现/正在交火）
@@ -3458,10 +3695,15 @@ function updateHUD() {
   for (const e of G.enemies) if (!e.dead) alive++;
   $('aliveTxt').textContent = alive;
   $('progTxt').textContent = G.roomsCleared + ' / ' + rooms.length + ' 房间已清';
+  $('keyTxt').textContent = '钥匙 ' + G.bossKeys + ' / ' + G.keysNeed;
   const remainRooms = rooms.filter(r => !r.isBoss && !r.cleared).length;
-  $('bossLockTxt').textContent = remainRooms > 0
-    ? 'BOSS 门锁：剩 ' + remainRooms + ' 房未清'
-    : 'BOSS 门已解锁';
+  if (G.bossKeys >= G.keysNeed) {
+    $('bossLockTxt').textContent = 'BOSS 门已解锁（钥匙集齐）';
+  } else if (remainRooms === 0) {
+    $('bossLockTxt').textContent = '全房清空 · BOSS 门已强制开启';
+  } else {
+    $('bossLockTxt').textContent = 'BOSS 门锁：还差 ' + (G.keysNeed - G.bossKeys) + ' 把钥匙';
+  }
 }
 
 // ---------------- 主循环 ----------------
