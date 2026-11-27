@@ -124,15 +124,15 @@ button.primary:hover{background:#ffc47d}
     <div id="bossLockTxt" style="color:var(--red);font-size:10.5px;letter-spacing:.06em"></div>
   </div>
   <div class="hud-bl">
-    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动 &nbsp; 鼠标 瞄准 &nbsp; 左键 射击<br>
-    <kbd>E</kbd> 翻滚 &nbsp; <kbd>R</kbd> 换弹 &nbsp; <kbd>H</kbd> 脱离卡死 &nbsp; 滚轮 缩放 &nbsp; <kbd>ESC</kbd>/<kbd>P</kbd> 暂停
+    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动 &nbsp; 鼠标 瞄准 &nbsp; 左键 射击 &nbsp; <kbd>右键</kbd> 翻滚<br>
+    <kbd>R</kbd> 换弹 &nbsp; <kbd>H</kbd> 脱离卡死 &nbsp; 滚轮 缩放 &nbsp; <kbd>ESC</kbd>/<kbd>P</kbd> 暂停
   </div>
   <button id="btnPauseHud" class="hudPause">Ⅱ 暂停</button>
 </div>
 
 <div id="overlay">
   <div class="card" id="startCard">
-    <div class="tag">2D TACTICAL CQB · V2.5</div>
+    <div class="tag">2D TACTICAL CQB · V2.5.1</div>
     <h1>CBQ<span>室内清除</span></h1>
     <div class="sub">
       每局随机生成一片室内楼层：小房间随机拼合、走廊随机连通，<br>
@@ -168,7 +168,7 @@ button.primary:hover{background:#ffc47d}
     <div class="keys">
       <div class="k">W A S D</div><div class="d">移动（贴墙自动侧滑）</div>
       <div class="k">鼠标 / 左键</div><div class="d">瞄准 / 射击（按住连发）</div>
-      <div class="k">E</div><div class="d">翻滚闪避（向前 4 格，有无敌帧）</div>
+      <div class="k">鼠标右键</div><div class="d">翻滚闪避（向前 4 格，有无敌帧）</div>
       <div class="k">R</div><div class="d">换弹（打空自动换）</div>
       <div class="k">滚轮</div><div class="d">放大 / 缩小视野</div>
       <div class="k">H</div><div class="d">脱离卡死</div>
@@ -186,7 +186,7 @@ button.primary:hover{background:#ffc47d}
     <h2>对手的规则</h2>
     <div class="sub">
       · <b style="color:var(--acc)">拐角记得点射压制</b>——进门前先短点几发，别整梭子扫空气。<br>
-      · <b>操作</b>：E 翻滚闪避（向前 4 格、有无敌帧），鼠标滚轮缩放视野；退出在暂停菜单里，ESC 失效时点右下角「暂停」。<br>
+      · <b>操作</b>：鼠标右键翻滚闪避（向前 4 格、有无敌帧），鼠标滚轮缩放视野；退出在暂停菜单里，ESC 失效时点右下角「暂停」。<br>
       · <b>武器</b>：开局选步枪（45 发、单发 35、精准）或轻机枪（150 发、压制但散布大）。<br>
       · <b>小隔间</b>：每个房间被薄墙隔成 4 个半封闭小隔间，敌人只会在小隔间里，且主要刷在墙角。<br>
       · <b>门锁</b>：当前房间没清空时，它的所有门锁死（红色挂锁）；清空后自动解锁，并且<b>门会保持敞开</b>，已清空的房间之间不再相互封闭。<b>BOSS 门要全图其他房间都清空才开</b>。<br>
@@ -1573,7 +1573,6 @@ window.addEventListener('keydown', e => {
     if (G.mode === 'paused') { resumeGame(); return; }
   }
   if (G.mode === 'playing') {
-    if (k === 'e') { startRoll(); return; }
     if (k === 'r') startReload();
     if (k === 'h') { unstuckPlayer(false); return; }
     if (k === 'w' || k === 'a' || k === 's' || k === 'd') keys[k] = true;
@@ -1593,7 +1592,14 @@ cv.addEventListener('mousemove', e => {
   G.pointer.inside = true;
 });
 cv.addEventListener('mousedown', e => {
-  if (!G || e.button !== 0) return;
+  if (!G) return;
+  if (e.button === 2) {
+    // 鼠标右键：翻滚
+    e.preventDefault();
+    if (G.mode === 'playing') startRoll();
+    return;
+  }
+  if (e.button !== 0) return;
   Sound.init();
   G.mouseDown = true;
 });
@@ -1605,7 +1611,7 @@ cv.addEventListener('wheel', e => {
   G.zoom = clamp((G.zoom || 1) * factor, 0.7, 1.8);
 }, { passive: false });
 window.addEventListener('mouseup', e => { if (G && e.button === 0) G.mouseDown = false; });
-cv.addEventListener('contextmenu', e => e.preventDefault());
+window.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('mouseleave', () => { if (G) G.pointer.inside = false; });
 
 // ---------------- 流程 ----------------
